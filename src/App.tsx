@@ -13,7 +13,6 @@ import {
   Code2,
   Copy,
   Eraser,
-  Github,
   Hash,
   Minimize2,
   Moon,
@@ -33,10 +32,10 @@ const tools: Array<{
   description: string
   icon: typeof Braces
 }> = [
-  { id: 'json-format', label: 'JSON 格式化', description: '格式化、压缩与检查 JSON', icon: Braces },
-  { id: 'text-diff', label: '文本 Diff', description: '并排比较文本或代码', icon: Code2 },
-  { id: 'timestamp', label: '时间戳转换', description: '日期与时间戳双向转换', icon: Clock3 },
-  { id: 'word-count', label: '字数统计', description: '实时统计字符与单词', icon: AlignLeft },
+  { id: 'json-format', label: 'JSON Formatter', description: 'Format, minify, and validate JSON', icon: Braces },
+  { id: 'text-diff', label: 'Text Diff', description: 'Compare text or code side by side', icon: Code2 },
+  { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
+  { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
 ]
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
@@ -52,8 +51,8 @@ function localDateTimeValue(date: Date): string {
 }
 
 function formatLocalDate(date: Date): string {
-  if (Number.isNaN(date.getTime())) return '无效日期'
-  return new Intl.DateTimeFormat('zh-CN', {
+  if (Number.isNaN(date.getTime())) return 'Invalid date'
+  return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -65,14 +64,14 @@ function formatLocalDate(date: Date): string {
 }
 
 function jsonErrorDetail(raw: string, error: unknown): string {
-  const message = error instanceof Error ? error.message : 'JSON 格式错误'
+  const message = error instanceof Error ? error.message : 'Invalid JSON'
   const position = message.match(/position\s+(\d+)/i)?.[1]
   if (!position) return message
   const offset = Number(position)
   const before = raw.slice(0, offset)
   const line = before.split('\n').length
   const column = offset - before.lastIndexOf('\n')
-  return `${message}（第 ${line} 行，第 ${column} 列）`
+  return `${message} (line ${line}, column ${column})`
 }
 
 function App() {
@@ -115,8 +114,8 @@ function App() {
           </div>
         </div>
 
-        <nav className="tool-nav" aria-label="工具导航">
-          <div className="nav-label">工具</div>
+        <nav className="tool-nav" aria-label="Tool navigation">
+          <div className="nav-label">Tools</div>
           {tools.map((tool) => {
             const Icon = tool.icon
             return (
@@ -135,10 +134,7 @@ function App() {
         <div className="sidebar-footer">
           <div className="privacy-note">
             <span className="privacy-dot" />
-            数据仅在本地处理
-          </div>
-          <div className="github-link">
-            <Github size={17} /> GitHub Pages Ready
+            Data stays in your browser
           </div>
         </div>
       </aside>
@@ -152,8 +148,8 @@ function App() {
           <button
             className="icon-button"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label={theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}
-            title={theme === 'dark' ? '浅色主题' : '深色主题'}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
@@ -183,7 +179,7 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
   const transform = (compact: boolean) => {
     if (!source.trim()) {
       setResult('')
-      setError('请先在左侧粘贴 JSON')
+      setError('Paste JSON into the left editor first')
       return
     }
     try {
@@ -193,7 +189,7 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
       setViewMode(compact ? 'text' : 'tree')
       setTreeState((state) => ({ revision: state.revision + 1, expanded: true }))
       setError('')
-      notify(compact ? 'JSON 已压缩' : 'JSON 已格式化')
+      notify(compact ? 'JSON minified' : 'JSON formatted')
     } catch (caught) {
       setResult('')
       setParsed(undefined)
@@ -204,7 +200,7 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
   const copy = async () => {
     if (!result) return
     await navigator.clipboard.writeText(result)
-    notify('结果已复制')
+    notify('Result copied')
   }
 
   const clear = () => {
@@ -222,23 +218,23 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
     <div className="tool-layout editor-tool">
       <div className="toolbar">
         <div className="toolbar-group">
-          <button className="primary-button" onClick={() => transform(false)}><Play size={15} fill="currentColor" />格式化</button>
-          <button className="secondary-button" onClick={() => transform(true)}><Minimize2 size={15} />压缩</button>
+          <button className="primary-button" onClick={() => transform(false)}><Play size={15} fill="currentColor" />Format</button>
+          <button className="secondary-button" onClick={() => transform(true)}><Minimize2 size={15} />Minify</button>
         </div>
         <div className="toolbar-group">
           {parsed !== undefined && (
-            <div className="view-switcher" aria-label="结果展示方式">
-              <button className={viewMode === 'tree' ? 'active' : ''} onClick={() => setViewMode('tree')}>树形</button>
-              <button className={viewMode === 'text' ? 'active' : ''} onClick={() => setViewMode('text')}>源码</button>
+            <div className="view-switcher" aria-label="Result view">
+              <button className={viewMode === 'tree' ? 'active' : ''} onClick={() => setViewMode('tree')}>Tree</button>
+              <button className={viewMode === 'text' ? 'active' : ''} onClick={() => setViewMode('text')}>Source</button>
             </div>
           )}
-          <button className="ghost-button" onClick={copy} disabled={!result}><Copy size={15} />复制结果</button>
-          <button className="ghost-button" onClick={clear}><Eraser size={15} />清空</button>
+          <button className="ghost-button" onClick={copy} disabled={!result}><Copy size={15} />Copy result</button>
+          <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
 
       <div className="split-editors">
-        <EditorPanel title="原始 JSON" badge="INPUT">
+        <EditorPanel title="Raw JSON" badge="INPUT">
           <Editor
             value={source}
             onChange={(value) => setSource(value ?? '')}
@@ -249,11 +245,11 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
         </EditorPanel>
         <div className="editor-panel">
           <div className="editor-panel-header">
-            <span>格式化结果</span>
+            <span>Formatted result</span>
             {viewMode === 'tree' && parsed !== undefined ? (
               <div className="tree-actions">
-                <button onClick={() => setAllExpanded(true)} title="全部展开"><ChevronsDown size={14} />全部展开</button>
-                <button onClick={() => setAllExpanded(false)} title="全部折叠"><ChevronsUp size={14} />全部折叠</button>
+                <button onClick={() => setAllExpanded(true)} title="Expand all"><ChevronsDown size={14} />Expand all</button>
+                <button onClick={() => setAllExpanded(false)} title="Collapse all"><ChevronsUp size={14} />Collapse all</button>
               </div>
             ) : <small>OUTPUT</small>}
           </div>
@@ -278,11 +274,11 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
 
 function JsonTree({ value, treeState }: { value: JsonValue | undefined; treeState: { revision: number; expanded: boolean } }) {
   if (value === undefined) {
-    return <div className="json-tree-empty"><Braces size={27} /><span>格式化后将在这里显示可折叠的 JSON 树</span></div>
+    return <div className="json-tree-empty"><Braces size={27} /><span>Your collapsible JSON tree will appear here</span></div>
   }
 
   return (
-    <div className="json-tree" role="tree" aria-label="JSON 树形结果">
+    <div className="json-tree" role="tree" aria-label="JSON tree result">
       <JsonTreeNode label="root" value={value} depth={0} treeState={treeState} />
     </div>
   )
@@ -325,7 +321,7 @@ function JsonTreeNode({
     <div className="json-tree-node" role="treeitem" aria-expanded={expandable ? expanded : undefined}>
       <div className="json-tree-row">
         {expandable ? (
-          <button className="tree-toggle" onClick={() => setExpanded((current) => !current)} aria-label={`${expanded ? '折叠' : '展开'} ${label}`}>
+          <button className="tree-toggle" onClick={() => setExpanded((current) => !current)} aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}>
             {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
           </button>
         ) : <span className="tree-spacer" />}
@@ -360,20 +356,20 @@ function TextDiff({ theme, notify }: { theme: Theme; notify: (message: string) =
   const clear = () => {
     diffRef.current?.getOriginalEditor().setValue('')
     diffRef.current?.getModifiedEditor().setValue('')
-    notify('内容已清空')
+    notify('Content cleared')
   }
 
   return (
     <div className="tool-layout editor-tool">
       <div className="toolbar">
         <div className="diff-legend">
-          <span><i className="legend-dot removed" />原始文本</span>
-          <span><i className="legend-dot added" />修改后文本</span>
+          <span><i className="legend-dot removed" />Original</span>
+          <span><i className="legend-dot added" />Modified</span>
         </div>
-        <button className="ghost-button" onClick={clear}><Eraser size={15} />清空</button>
+        <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
       </div>
       <div className="single-editor-frame">
-        <div className="diff-headings"><span>原始文本</span><span>修改后文本</span></div>
+        <div className="diff-headings"><span>Original</span><span>Modified</span></div>
         <DiffEditor
           original=""
           modified=""
@@ -444,14 +440,14 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
   const copyValue = async (value: string) => {
     if (!value) return
     await navigator.clipboard.writeText(value)
-    notify('已复制')
+    notify('Copied')
   }
 
   const resetNow = () => {
     const current = new Date()
     setTimestamp(String(unit === 's' ? Math.floor(current.getTime() / 1000) : current.getTime()))
     setDateInput(localDateTimeValue(current))
-    notify('已更新为当前时间')
+    notify('Updated to the current time')
   }
 
   const changeUnit = (next: TimestampUnit) => {
@@ -466,40 +462,40 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
   return (
     <div className="cards-tool">
       <div className="timestamp-topline">
-        <div className="segmented" aria-label="时间戳单位">
-          <button className={unit === 's' ? 'active' : ''} onClick={() => changeUnit('s')}>秒 (s)</button>
-          <button className={unit === 'ms' ? 'active' : ''} onClick={() => changeUnit('ms')}>毫秒 (ms)</button>
+        <div className="segmented" aria-label="Timestamp unit">
+          <button className={unit === 's' ? 'active' : ''} onClick={() => changeUnit('s')}>Seconds (s)</button>
+          <button className={unit === 'ms' ? 'active' : ''} onClick={() => changeUnit('ms')}>Milliseconds (ms)</button>
         </div>
-        <button className="secondary-button" onClick={resetNow}><Clock3 size={15} />使用当前时间</button>
+        <button className="secondary-button" onClick={resetNow}><Clock3 size={15} />Use current time</button>
       </div>
 
       <div className="converter-grid">
         <article className="converter-card">
-          <div className="card-eyebrow"><Hash size={16} />时间戳 → 日期</div>
-          <h2>输入时间戳</h2>
+          <div className="card-eyebrow"><Hash size={16} />Timestamp → Date</div>
+          <h2>Enter a timestamp</h2>
           <div className="input-with-unit">
             <input value={timestamp} onChange={(event) => setTimestamp(event.target.value)} inputMode="numeric" />
             <span>{unit}</span>
           </div>
           <div className="result-box">
-            <span>本地时间</span>
-            <strong>{timestampDate ? formatLocalDate(timestampDate) : '请输入有效时间戳'}</strong>
-            <button onClick={() => copyValue(timestampDate ? formatLocalDate(timestampDate) : '')} aria-label="复制日期"><Clipboard size={16} /></button>
+            <span>Local time</span>
+            <strong>{timestampDate ? formatLocalDate(timestampDate) : 'Enter a valid timestamp'}</strong>
+            <button onClick={() => copyValue(timestampDate ? formatLocalDate(timestampDate) : '')} aria-label="Copy date"><Clipboard size={16} /></button>
           </div>
         </article>
 
         <article className="converter-card">
-          <div className="card-eyebrow"><Clock3 size={16} />日期 → 时间戳</div>
-          <h2>选择本地日期与时间</h2>
+          <div className="card-eyebrow"><Clock3 size={16} />Date → Timestamp</div>
+          <h2>Select a local date and time</h2>
           <input className="date-input" type="datetime-local" step="1" value={dateInput} onChange={(event) => setDateInput(event.target.value)} />
           <div className="result-box">
-            <span>{unit === 's' ? '秒级时间戳' : '毫秒级时间戳'}</span>
+            <span>{unit === 's' ? 'Timestamp in seconds' : 'Timestamp in milliseconds'}</span>
             <strong className="mono">{dateTimestamp || '—'}</strong>
-            <button onClick={() => copyValue(dateTimestamp)} aria-label="复制时间戳"><Clipboard size={16} /></button>
+            <button onClick={() => copyValue(dateTimestamp)} aria-label="Copy timestamp"><Clipboard size={16} /></button>
           </div>
         </article>
       </div>
-      <p className="tool-hint">时间依据当前浏览器的本地时区进行转换。</p>
+      <p className="tool-hint">Dates are converted using your browser's local time zone.</p>
     </div>
   )
 }
@@ -518,30 +514,30 @@ function WordCounter() {
   return (
     <div className="counter-tool">
       <div className="stats-grid">
-        <StatCard label="总字符数" value={stats.characters} accent />
-        <StatCard label="非空字符数" value={stats.nonWhitespace} />
-        <StatCard label="汉字数" value={stats.chinese} />
-        <StatCard label="单词数" value={stats.words} />
+        <StatCard label="Characters" value={stats.characters} accent />
+        <StatCard label="Non-whitespace" value={stats.nonWhitespace} />
+        <StatCard label="Chinese characters" value={stats.chinese} />
+        <StatCard label="Words" value={stats.words} />
       </div>
       <div className="text-area-card">
         <div className="text-area-head">
-          <span>输入文本</span>
-          <div><span>{stats.lines} 行</span><button onClick={() => setText('')} disabled={!text}><Eraser size={14} />清空</button></div>
+          <span>Text input</span>
+          <div><span>{stats.lines} lines</span><button onClick={() => setText('')} disabled={!text}><Eraser size={14} />Clear</button></div>
         </div>
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="在这里输入或粘贴文字，统计结果会实时更新…"
+          placeholder="Type or paste text here to see live statistics…"
           autoFocus
         />
       </div>
-      <p className="tool-hint">总字符数包含文字、标点、空格和换行；非空字符数不包含空白字符。</p>
+      <p className="tool-hint">Characters include letters, punctuation, spaces, and line breaks. Non-whitespace excludes all spacing characters.</p>
     </div>
   )
 }
 
 function StatCard({ label, value, accent = false }: { label: string; value: number; accent?: boolean }) {
-  return <div className={`stat-card ${accent ? 'accent' : ''}`}><span>{label}</span><strong>{value.toLocaleString('zh-CN')}</strong></div>
+  return <div className={`stat-card ${accent ? 'accent' : ''}`}><span>{label}</span><strong>{value.toLocaleString('en-US')}</strong></div>
 }
 
 export default App

@@ -105,9 +105,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .sidebar-footer { margin-top: auto; padding: 0 8px; display: flex; flex-direction: column; gap: 13px; }
 .privacy-note { display: flex; align-items: center; gap: 8px; color: var(--text-subtle); font-size: 11px; }
 .privacy-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 9px var(--accent); }
-.github-link { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; text-decoration: none; }
-.github-link:hover { color: var(--text); }
-
 .main-area { grid-column: 2; min-width: 0; height: 100vh; display: flex; flex-direction: column; }
 .topbar {
   min-height: 82px;
