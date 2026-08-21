@@ -14,6 +14,7 @@ import {
   Code2,
   Copy,
   Eraser,
+  Fingerprint,
   Hash,
   Minimize2,
   Moon,
@@ -22,12 +23,14 @@ import {
   Sun,
 } from 'lucide-react'
 
-type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'base64-codec' | 'timestamp' | 'word-count'
+type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 type JsonViewMode = 'tree' | 'text'
 type MonacoEditor = Parameters<OnMount>[0]
+type HashAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-512'
+type HashEncoding = 'hex' | 'base64'
 
 const tools: Array<{
   id: ToolId
@@ -42,6 +45,7 @@ const tools: Array<{
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
   { id: 'url-codec', label: 'URL Converter', title: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
   { id: 'base64-codec', label: 'Base64 Converter', title: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
+  { id: 'hash-generator', label: 'Hash Generator', description: 'Generate SHA hashes from UTF-8 text', icon: Fingerprint },
 ]
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
@@ -168,6 +172,7 @@ function App() {
           {activeTool === 'timestamp' && <TimestampConverter notify={notify} />}
           {activeTool === 'word-count' && <WordCounter />}
           {activeTool === 'base64-codec' && <Base64Codec notify={notify} />}
+          {activeTool === 'hash-generator' && <HashGenerator notify={notify} />}
         </section>
       </main>
 
@@ -680,6 +685,93 @@ function Base64Codec({ notify }: { notify: (message: string) => void }) {
       </div>
       {error && <div className="error-banner"><span>!</span>{error}</div>}
       <p className="tool-hint">Standard Base64 uses +, / and padding. Base64URL uses URL-safe - and _ characters without padding.</p>
+    </div>
+  )
+}
+
+function HashGenerator({ notify }: { notify: (message: string) => void }) {
+  const [input, setInput] = useState('')
+  const [algorithm, setAlgorithm] = useState<HashAlgorithm>('SHA-256')
+  const [encoding, setEncoding] = useState<HashEncoding>('hex')
+  const [hashes, setHashes] = useState<{ hex: string; base64: string } | null>(null)
+  const [error, setError] = useState('')
+  const output = hashes?.[encoding] ?? ''
+  const byteCount = useMemo(() => new TextEncoder().encode(input).length, [input])
+
+  const generate = async () => {
+    if (!input) {
+      setHashes(null)
+      setError('Enter text to generate a hash')
+      return
+    }
+    try {
+      const digest = await window.crypto.subtle.digest(algorithm, new TextEncoder().encode(input))
+      const bytes = new Uint8Array(digest)
+      const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+      let binary = ''
+      for (const byte of bytes) binary += String.fromCharCode(byte)
+      setHashes({ hex, base64: window.btoa(binary) })
+      setError('')
+      notify(`${algorithm} hash generated`)
+    } catch (caught) {
+      setHashes(null)
+      setError(caught instanceof Error ? caught.message : 'Unable to generate the hash')
+    }
+  }
+
+  const copyOutput = async () => {
+    if (!output) return
+    await navigator.clipboard.writeText(output)
+    notify('Hash copied')
+  }
+
+  const clear = () => {
+    setInput('')
+    setHashes(null)
+    setError('')
+  }
+
+  return (
+    <div className="tool-layout editor-tool codec-tool">
+      <div className="toolbar">
+        <div className="toolbar-group">
+          <button className="primary-button" onClick={generate}><Fingerprint size={15} />Generate</button>
+          <div className="view-switcher" aria-label="Hash algorithm">
+            {(['SHA-256', 'SHA-384', 'SHA-512'] as HashAlgorithm[]).map((item) => (
+              <button key={item} className={algorithm === item ? 'active' : ''} onClick={() => setAlgorithm(item)}>{item}</button>
+            ))}
+          </div>
+        </div>
+        <div className="toolbar-group">
+          <div className="view-switcher" aria-label="Hash output encoding">
+            <button className={encoding === 'hex' ? 'active' : ''} onClick={() => setEncoding('hex')}>Hex</button>
+            <button className={encoding === 'base64' ? 'active' : ''} onClick={() => setEncoding('base64')}>Base64</button>
+          </div>
+          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy hash</button>
+          <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
+        </div>
+      </div>
+      <div className="split-editors codec-panels">
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Text input</span><small>{byteCount.toLocaleString('en-US')} UTF-8 BYTES</small></div>
+          <textarea
+            value={input}
+            onChange={(event) => {
+              setInput(event.target.value)
+              setHashes(null)
+              setError('')
+            }}
+            placeholder="Enter text to hash…"
+            autoFocus
+          />
+        </div>
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>{algorithm} hash</span><small>{encoding.toUpperCase()}</small></div>
+          <textarea value={output} readOnly placeholder="The generated hash will appear here…" />
+        </div>
+      </div>
+      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      <p className="tool-hint">Hashing is one-way. TextBench processes the entire input locally using the browser's Web Crypto API.</p>
     </div>
   )
 }
