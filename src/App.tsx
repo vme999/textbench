@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Editor, { DiffEditor, type DiffOnMount, type OnMount } from '@monaco-editor/react'
 import {
   AlignLeft,
+  ArrowRight,
   Binary,
   Braces,
   Check,
@@ -15,15 +16,19 @@ import {
   Copy,
   Eraser,
   Fingerprint,
+  Gamepad2,
   Hash,
+  LockKeyhole,
   Minimize2,
   Moon,
   Play,
+  RotateCcw,
   Search,
   Sun,
+  Trophy,
 } from 'lucide-react'
 
-type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count'
+type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count' | 'diff-challenge'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -46,6 +51,7 @@ const tools: Array<{
   { id: 'url-codec', label: 'URL Converter', title: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
   { id: 'base64-codec', label: 'Base64 Converter', title: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
   { id: 'hash-generator', label: 'Hash Generator', description: 'Generate SHA hashes from UTF-8 text', icon: Fingerprint },
+  { id: 'diff-challenge', label: 'Diff Challenge', description: 'Find every hidden difference across five code reviews', icon: Gamepad2 },
 ]
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
@@ -173,6 +179,7 @@ function App() {
           {activeTool === 'word-count' && <WordCounter />}
           {activeTool === 'base64-codec' && <Base64Codec notify={notify} />}
           {activeTool === 'hash-generator' && <HashGenerator notify={notify} />}
+          {activeTool === 'diff-challenge' && <DiffChallenge theme={theme} />}
         </section>
       </main>
 
@@ -476,6 +483,438 @@ function TextDiff({ theme, notify }: { theme: Theme; notify: (message: string) =
           }}
         />
       </div>
+    </div>
+  )
+}
+
+type ChallengeStatus = 'ready' | 'playing' | 'complete' | 'failed'
+type ChallengeSide = 'left' | 'right'
+
+type ChallengeDifference = {
+  left: string
+  right: string
+}
+
+type ChallengeLevel = {
+  name: string
+  language: string
+  languageLabel: string
+  duration: number
+  left: string
+  right: string
+  differences: ChallengeDifference[]
+}
+
+const challengeLevels: ChallengeLevel[] = [
+  {
+    name: 'JSON Basics',
+    language: 'json',
+    languageLabel: 'JSON',
+    duration: 90,
+    left: `{
+  "service": "textbench",
+  "enabled": true,
+  "retryLimit": 3,
+  "region": "us-east-1"
+}`,
+    right: `{
+  "service": "textbench",
+  "enabled": false,
+  "retryLimit": 5,
+  "region": "ap-southeast-1"
+}`,
+    differences: [
+      { left: 'true', right: 'false' },
+      { left: '3', right: '5' },
+      { left: 'us-east-1', right: 'ap-southeast-1' },
+    ],
+  },
+  {
+    name: 'Function Review',
+    language: 'javascript',
+    languageLabel: 'JavaScript',
+    duration: 90,
+    left: `function calculateTotal(items) {
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price,
+    0,
+  )
+  const tax = subtotal * 0.08
+  return subtotal + tax
+}`,
+    right: `function calculateOrderTotal(items) {
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.cost,
+    0,
+  )
+  const tax = subtotal * 0.09
+  return subtotal - tax
+}`,
+    differences: [
+      { left: 'calculateTotal', right: 'calculateOrderTotal' },
+      { left: 'item.price', right: 'item.cost' },
+      { left: '0.08', right: '0.09' },
+      { left: 'subtotal + tax', right: 'subtotal - tax' },
+    ],
+  },
+  {
+    name: 'Query Check',
+    language: 'sql',
+    languageLabel: 'SQL',
+    duration: 100,
+    left: `SELECT
+  user_id,
+  COUNT(*) AS order_count,
+  SUM(total_amount) AS revenue
+FROM orders
+WHERE status = 'completed'
+  AND created_at >= '2026-01-01'
+GROUP BY user_id
+HAVING COUNT(*) >= 5
+ORDER BY revenue DESC
+LIMIT 100;`,
+    right: `SELECT
+  user_id,
+  COUNT(*) AS purchase_count,
+  SUM(net_amount) AS revenue
+FROM orders
+WHERE status = 'approved'
+  AND created_at >= '2026-02-01'
+GROUP BY user_id
+HAVING COUNT(*) >= 5
+ORDER BY revenue ASC
+LIMIT 100;`,
+    differences: [
+      { left: 'order_count', right: 'purchase_count' },
+      { left: 'total_amount', right: 'net_amount' },
+      { left: "'completed'", right: "'approved'" },
+      { left: "'2026-01-01'", right: "'2026-02-01'" },
+      { left: 'revenue DESC', right: 'revenue ASC' },
+    ],
+  },
+  {
+    name: 'Config Audit',
+    language: 'yaml',
+    languageLabel: 'YAML',
+    duration: 110,
+    left: `app:
+  environment: staging
+  port: 5173
+  debug: true
+server:
+  timeout: 3000
+  retries: 3
+cache:
+  enabled: false
+  ttl: 600
+logging:
+  level: info`,
+    right: `app:
+  environment: production
+  port: 4173
+  debug: false
+server:
+  timeout: 30000
+  retries: 3
+cache:
+  enabled: true
+  ttl: 600
+logging:
+  level: warn`,
+    differences: [
+      { left: 'staging', right: 'production' },
+      { left: '5173', right: '4173' },
+      { left: 'debug: true', right: 'debug: false' },
+      { left: '3000', right: '30000' },
+      { left: 'enabled: false', right: 'enabled: true' },
+      { left: 'level: info', right: 'level: warn' },
+    ],
+  },
+  {
+    name: 'Release Review',
+    language: 'typescript',
+    languageLabel: 'TypeScript',
+    duration: 120,
+    left: `type UserProfile = {
+  id: number
+  accessGranted: boolean
+}
+
+export async function loadUser(id: number) {
+  const response = await fetch(\`/api/users/\${id}\`)
+  if (!response.ok) throw new Error('Request failed')
+
+  const user = await response.json()
+  return {
+    id: user.id,
+    authorized: user.role === 'admin',
+  }
+}`,
+    right: `type AccountProfile = {
+  id: number
+  accessAllowed: boolean
+}
+
+export async function fetchUser(id: number) {
+  const response = await fetch(\`/api/accounts/\${id}\`)
+  if (response.ok) throw new Error('Request failed')
+
+  const user = await response.text()
+  return {
+    id: user.id,
+    authorized: user.role !== 'admin',
+  }
+}`,
+    differences: [
+      { left: 'UserProfile', right: 'AccountProfile' },
+      { left: 'accessGranted', right: 'accessAllowed' },
+      { left: 'loadUser', right: 'fetchUser' },
+      { left: '/api/users/', right: '/api/accounts/' },
+      { left: '!response.ok', right: 'response.ok' },
+      { left: 'response.json()', right: 'response.text()' },
+      { left: "user.role === 'admin'", right: "user.role !== 'admin'" },
+    ],
+  },
+]
+
+function formatChallengeTime(seconds: number) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function challengeRange(text: string, needle: string) {
+  const offset = text.indexOf(needle)
+  if (offset < 0) return undefined
+  const before = text.slice(0, offset)
+  const lineNumber = before.split('\n').length
+  const startColumn = offset - before.lastIndexOf('\n')
+  return {
+    startLineNumber: lineNumber,
+    startColumn,
+    endLineNumber: lineNumber,
+    endColumn: startColumn + needle.length,
+  }
+}
+
+function DiffChallenge({ theme }: { theme: Theme }) {
+  const [levelIndex, setLevelIndex] = useState(0)
+  const [unlockedLevel, setUnlockedLevel] = useState(0)
+  const [status, setStatus] = useState<ChallengeStatus>('ready')
+  const [found, setFound] = useState<number[]>([])
+  const [timeLeft, setTimeLeft] = useState(challengeLevels[0].duration)
+  const [mistakes, setMistakes] = useState(0)
+  const [scores, setScores] = useState<number[]>(Array(challengeLevels.length).fill(0))
+  const leftEditor = useRef<MonacoEditor | null>(null)
+  const rightEditor = useRef<MonacoEditor | null>(null)
+  const leftDecorations = useRef<string[]>([])
+  const rightDecorations = useRef<string[]>([])
+  const clickHandler = useRef<(side: ChallengeSide, lineNumber: number, column: number) => void>(() => undefined)
+  const level = challengeLevels[levelIndex]
+  const levelScore = scores[levelIndex]
+  const totalScore = scores.reduce((total, score) => total + score, 0)
+  const allComplete = status === 'complete' && levelIndex === challengeLevels.length - 1
+
+  const resetRound = (nextStatus: ChallengeStatus = 'ready') => {
+    setFound([])
+    setMistakes(0)
+    setTimeLeft(level.duration)
+    setStatus(nextStatus)
+  }
+
+  const selectLevel = (nextIndex: number) => {
+    if (nextIndex > unlockedLevel) return
+    setLevelIndex(nextIndex)
+    setFound([])
+    setMistakes(0)
+    setTimeLeft(challengeLevels[nextIndex].duration)
+    setStatus('ready')
+  }
+
+  useEffect(() => {
+    if (status !== 'playing') return
+    const timer = window.setInterval(() => {
+      setTimeLeft((current) => {
+        if (document.hidden) return current
+        if (current <= 1) {
+          setStatus('failed')
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [status])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') window.location.hash = 'text-diff'
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  useEffect(() => {
+    const decorate = (editor: MonacoEditor | null, side: ChallengeSide, previous: React.MutableRefObject<string[]>) => {
+      if (!editor) return
+      const text = side === 'left' ? level.left : level.right
+      const decorations = found.flatMap((differenceIndex) => {
+        const range = challengeRange(text, level.differences[differenceIndex][side])
+        return range ? [{ range, options: { inlineClassName: 'challenge-found-difference' } }] : []
+      })
+      previous.current = editor.deltaDecorations(previous.current, decorations)
+    }
+    decorate(leftEditor.current, 'left', leftDecorations)
+    decorate(rightEditor.current, 'right', rightDecorations)
+  }, [found, level])
+
+  const handleEditorClick = (side: ChallengeSide, lineNumber: number, column: number) => {
+    if (status !== 'playing') return
+    const text = side === 'left' ? level.left : level.right
+    const matchIndex = level.differences.findIndex((difference, index) => {
+      if (found.includes(index)) return false
+      const range = challengeRange(text, difference[side])
+      return range !== undefined
+        && lineNumber === range.startLineNumber
+        && column >= range.startColumn
+        && column <= range.endColumn
+    })
+
+    if (matchIndex < 0) {
+      setMistakes((current) => current + 1)
+      setTimeLeft((current) => {
+        const next = Math.max(0, current - 3)
+        if (next === 0) setStatus('failed')
+        return next
+      })
+      return
+    }
+
+    const nextFound = [...found, matchIndex]
+    setFound(nextFound)
+    if (nextFound.length === level.differences.length) {
+      const score = Math.max(0, level.differences.length * 100 + timeLeft * 5 + (mistakes === 0 ? 200 : 0) - mistakes * 25)
+      setScores((current) => current.map((value, index) => index === levelIndex ? Math.max(value, score) : value))
+      setUnlockedLevel((current) => Math.max(current, Math.min(levelIndex + 1, challengeLevels.length - 1)))
+      setStatus('complete')
+    }
+  }
+  clickHandler.current = handleEditorClick
+
+  const mountChallengeEditor = (side: ChallengeSide) => (editor: MonacoEditor) => {
+    if (side === 'left') leftEditor.current = editor
+    else rightEditor.current = editor
+    editor.onMouseDown((event) => {
+      const position = event.target.position
+      if (position) clickHandler.current(side, position.lineNumber, position.column)
+    })
+  }
+
+  const nextLevel = () => {
+    const nextIndex = Math.min(levelIndex + 1, challengeLevels.length - 1)
+    setLevelIndex(nextIndex)
+    setFound([])
+    setMistakes(0)
+    setTimeLeft(challengeLevels[nextIndex].duration)
+    setStatus('playing')
+  }
+
+  const playAgain = () => {
+    setLevelIndex(0)
+    setUnlockedLevel(0)
+    setScores(Array(challengeLevels.length).fill(0))
+    setFound([])
+    setMistakes(0)
+    setTimeLeft(challengeLevels[0].duration)
+    setStatus('ready')
+  }
+
+  const challengeEditorOptions = {
+    ...editorOptions(true),
+    cursorStyle: 'line' as const,
+    domReadOnly: false,
+    renderLineHighlight: 'none' as const,
+    selectionHighlight: false,
+    occurrencesHighlight: 'off' as const,
+  }
+
+  return (
+    <div className={`tool-layout editor-tool challenge-tool ${status === 'complete' ? 'is-complete' : ''}`}>
+      <div className="challenge-levels" aria-label="Challenge levels">
+        {challengeLevels.map((item, index) => (
+          <button
+            key={item.name}
+            className={`${index === levelIndex ? 'active' : ''} ${scores[index] ? 'passed' : ''}`}
+            disabled={index > unlockedLevel}
+            onClick={() => selectLevel(index)}
+          >
+            {index > unlockedLevel ? <LockKeyhole size={12} /> : scores[index] ? <Check size={12} /> : index + 1}
+            <span>{item.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="challenge-statusbar">
+        <div className="challenge-meta">
+          <strong>Challenge {levelIndex + 1} of {challengeLevels.length}</strong>
+          <span>{level.languageLabel}</span>
+          <span>{found.length} / {level.differences.length} found</span>
+          <span className={timeLeft <= 15 ? 'time-low' : ''}>{formatChallengeTime(timeLeft)}</span>
+        </div>
+        <div className="challenge-actions">
+          <span>Score {totalScore}</span>
+          {status === 'ready' && <button className="primary-button" onClick={() => setStatus('playing')}><Play size={14} fill="currentColor" />Start</button>}
+          {(status === 'playing' || status === 'failed') && <button className="secondary-button" onClick={() => resetRound('playing')}><RotateCcw size={14} />Restart</button>}
+        </div>
+      </div>
+
+      <div className="challenge-editor-frame">
+        <div className="challenge-editor-grid">
+          <EditorPanel title="Original" badge="LEFT">
+            <Editor
+              key={`left-${levelIndex}`}
+              value={level.left}
+              language={level.language}
+              theme={theme === 'dark' ? 'vs-dark' : 'light'}
+              onMount={mountChallengeEditor('left')}
+              options={challengeEditorOptions}
+            />
+          </EditorPanel>
+          <EditorPanel title="Modified" badge="RIGHT">
+            <Editor
+              key={`right-${levelIndex}`}
+              value={level.right}
+              language={level.language}
+              theme={theme === 'dark' ? 'vs-dark' : 'light'}
+              onMount={mountChallengeEditor('right')}
+              options={challengeEditorOptions}
+            />
+          </EditorPanel>
+        </div>
+
+        {status === 'failed' && (
+          <div className="challenge-result failed">
+            <strong>Review timed out</strong>
+            <span>{found.length} of {level.differences.length} differences found</span>
+            <button className="secondary-button" onClick={() => resetRound('playing')}><RotateCcw size={14} />Try again</button>
+          </div>
+        )}
+
+        {status === 'complete' && (
+          <>
+            <div className="challenge-scan" />
+            <div className="challenge-result complete">
+              {allComplete ? <Trophy size={20} /> : <Check size={20} />}
+              <strong>{allComplete ? 'All reviews completed' : 'Challenge completed'}</strong>
+              <span>{level.differences.length} differences · {mistakes} mistakes · {levelScore} points</span>
+              {allComplete ? (
+                <button className="primary-button" onClick={playAgain}><RotateCcw size={14} />Play again</button>
+              ) : (
+                <button className="primary-button" onClick={nextLevel}>Next challenge<ArrowRight size={14} /></button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      <p className="tool-hint">Click a changed token in either panel. Found differences are highlighted on both sides. Press Esc to return to Text Diff.</p>
     </div>
   )
 }
