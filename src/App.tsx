@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Editor, { DiffEditor, type DiffOnMount, type OnMount } from '@monaco-editor/react'
 import {
   AlignLeft,
+  Binary,
   Braces,
   Check,
   ChevronDown,
@@ -21,7 +22,7 @@ import {
   Sun,
 } from 'lucide-react'
 
-type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'timestamp' | 'word-count'
+type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'base64-codec' | 'timestamp' | 'word-count'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -39,6 +40,7 @@ const tools: Array<{
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
   { id: 'url-codec', label: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
+  { id: 'base64-codec', label: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
 ]
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
@@ -164,6 +166,7 @@ function App() {
           {activeTool === 'url-codec' && <UrlCodec notify={notify} />}
           {activeTool === 'timestamp' && <TimestampConverter notify={notify} />}
           {activeTool === 'word-count' && <WordCounter />}
+          {activeTool === 'base64-codec' && <Base64Codec notify={notify} />}
         </section>
       </main>
 
@@ -556,7 +559,7 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
   }
 
   return (
-    <div className="tool-layout editor-tool url-codec-tool">
+    <div className="tool-layout editor-tool codec-tool">
       <div className="toolbar">
         <div className="toolbar-group">
           <button className="primary-button" onClick={() => transformUrl('encode')}>Encode</button>
@@ -571,7 +574,7 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
-      <div className="split-editors url-panels">
+      <div className="split-editors codec-panels">
         <div className="editor-panel">
           <div className="editor-panel-header"><span>Input</span><small>RAW</small></div>
           <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Enter a URL, query parameter, or text…" autoFocus />
@@ -583,6 +586,99 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
       </div>
       {error && <div className="error-banner"><span>!</span>{error}</div>}
       <p className="tool-hint">Component mode encodes reserved URL characters. Full URL mode preserves URL structure such as : / ? &amp; = and #.</p>
+    </div>
+  )
+}
+
+function encodeBase64(value: string, urlSafe: boolean): string {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  const encoded = window.btoa(binary)
+  return urlSafe ? encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '') : encoded
+}
+
+function decodeBase64(value: string, urlSafe: boolean): string {
+  const compact = value.replace(/\s/gu, '')
+  const normalized = urlSafe ? compact.replace(/-/g, '+').replace(/_/g, '/') : compact
+  if (!normalized || normalized.length % 4 === 1 || !/^[A-Za-z0-9+/]*={0,2}$/u.test(normalized)) {
+    throw new Error('Enter a valid Base64 value')
+  }
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+  const binary = window.atob(padded)
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    throw new Error('The decoded value is not valid UTF-8 text')
+  }
+}
+
+function Base64Codec({ notify }: { notify: (message: string) => void }) {
+  const [input, setInput] = useState('')
+  const [output, setOutput] = useState('')
+  const [mode, setMode] = useState<'standard' | 'url'>('standard')
+  const [error, setError] = useState('')
+
+  const transformBase64 = (operation: 'encode' | 'decode') => {
+    if (!input) {
+      setOutput('')
+      setError('Enter text or Base64 to process')
+      return
+    }
+    try {
+      const next = operation === 'encode'
+        ? encodeBase64(input, mode === 'url')
+        : decodeBase64(input, mode === 'url')
+      setOutput(next)
+      setError('')
+      notify(operation === 'encode' ? 'Text encoded as Base64' : 'Base64 decoded')
+    } catch (caught) {
+      setOutput('')
+      setError(caught instanceof Error ? caught.message : 'Unable to process this value')
+    }
+  }
+
+  const copyOutput = async () => {
+    if (!output) return
+    await navigator.clipboard.writeText(output)
+    notify('Result copied')
+  }
+
+  const clear = () => {
+    setInput('')
+    setOutput('')
+    setError('')
+  }
+
+  return (
+    <div className="tool-layout editor-tool codec-tool">
+      <div className="toolbar">
+        <div className="toolbar-group">
+          <button className="primary-button" onClick={() => transformBase64('encode')}>Encode</button>
+          <button className="secondary-button" onClick={() => transformBase64('decode')}>Decode</button>
+          <div className="view-switcher" aria-label="Base64 variant">
+            <button className={mode === 'standard' ? 'active' : ''} onClick={() => setMode('standard')}>Standard</button>
+            <button className={mode === 'url' ? 'active' : ''} onClick={() => setMode('url')}>Base64URL</button>
+          </div>
+        </div>
+        <div className="toolbar-group">
+          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy result</button>
+          <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
+        </div>
+      </div>
+      <div className="split-editors codec-panels">
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Input</span><small>UTF-8 / BASE64</small></div>
+          <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Enter UTF-8 text to encode or Base64 to decode…" autoFocus />
+        </div>
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Result</span><small>OUTPUT</small></div>
+          <textarea value={output} readOnly placeholder="The encoded or decoded result will appear here…" />
+        </div>
+      </div>
+      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      <p className="tool-hint">Standard Base64 uses +, / and padding. Base64URL uses URL-safe - and _ characters without padding.</p>
     </div>
   )
 }

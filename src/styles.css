@@ -243,10 +243,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .result-box button { position: absolute; right: 10px; top: 50%; width: 30px; height: 30px; display: grid; place-items: center; transform: translateY(-50%); border: 0; border-radius: 6px; background: transparent; color: var(--text-subtle); cursor: pointer; }
 .result-box button:hover { color: var(--text); background: var(--surface-hover); }
 .tool-hint { margin: 14px 2px 0; color: var(--text-subtle); font-size: 11px; }
-.url-codec-tool { min-height: 560px; }
-.url-panels { min-height: 0; }
-.url-panels .editor-panel textarea { width: 100%; min-height: 0; flex: 1; display: block; resize: none; padding: 18px; border: 0; outline: 0; color: var(--text); background: var(--editor-bg); font-family: "DM Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.7; }
-.url-panels .editor-panel textarea::placeholder { color: var(--text-subtle); }
+.codec-tool { min-height: 560px; }
+.codec-panels { min-height: 0; }
+.codec-panels .editor-panel textarea { width: 100%; min-height: 0; flex: 1; display: block; resize: none; padding: 18px; border: 0; outline: 0; color: var(--text); background: var(--editor-bg); font-family: "DM Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.7; }
+.codec-panels .editor-panel textarea::placeholder { color: var(--text-subtle); }
 
 .counter-tool { max-width: 1080px; margin: 0 auto; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 15px; }
