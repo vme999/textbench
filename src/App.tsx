@@ -36,9 +36,9 @@ const tools: Array<{
 }> = [
   { id: 'json-format', label: 'JSON Formatter', description: 'Format, minify, and validate JSON', icon: Braces },
   { id: 'text-diff', label: 'Text Diff', description: 'Compare text or code side by side', icon: Code2 },
-  { id: 'url-codec', label: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
+  { id: 'url-codec', label: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
 ]
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
@@ -140,12 +140,6 @@ function App() {
           })}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="privacy-note">
-            <span className="privacy-dot" />
-            Data stays in your browser
-          </div>
-        </div>
       </aside>
 
       <main className="main-area">

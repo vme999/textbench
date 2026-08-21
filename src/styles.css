@@ -102,9 +102,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 .nav-item:hover { color: var(--text); background: var(--surface-hover); }
 .nav-item.active { color: var(--accent-strong); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
-.sidebar-footer { margin-top: auto; padding: 0 8px; display: flex; flex-direction: column; gap: 13px; }
-.privacy-note { display: flex; align-items: center; gap: 8px; color: var(--text-subtle); font-size: 11px; }
-.privacy-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 9px var(--accent); }
 .main-area { grid-column: 2; min-width: 0; height: 100vh; display: flex; flex-direction: column; }
 .topbar {
   min-height: 82px;
@@ -273,7 +270,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   .app-shell { display: block; }
   .sidebar { position: static; width: auto; height: auto; padding: 14px 16px 0; border-right: 0; border-bottom: 1px solid var(--border); }
   .brand { padding: 0 2px 13px; }
-  .brand-tagline, .nav-label, .sidebar-footer { display: none; }
+  .brand-tagline, .nav-label { display: none; }
   .tool-nav { flex-direction: row; gap: 5px; padding-bottom: 10px; overflow-x: auto; }
   .nav-item { width: auto; flex: 0 0 auto; padding: 8px 10px; }
   .main-area { height: calc(100vh - 110px); }
