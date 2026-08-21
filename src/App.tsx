@@ -32,6 +32,7 @@ type MonacoEditor = Parameters<OnMount>[0]
 const tools: Array<{
   id: ToolId
   label: string
+  title?: string
   description: string
   icon: typeof Braces
 }> = [
@@ -39,8 +40,8 @@ const tools: Array<{
   { id: 'text-diff', label: 'Text Diff', description: 'Compare text or code side by side', icon: Code2 },
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
-  { id: 'url-codec', label: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
-  { id: 'base64-codec', label: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
+  { id: 'url-codec', label: 'URL Converter', title: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
+  { id: 'base64-codec', label: 'Base64 Converter', title: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
 ]
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
@@ -147,7 +148,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div>
-            <h1>{activeMeta.label}</h1>
+            <h1>{activeMeta.title ?? activeMeta.label}</h1>
             <p>{activeMeta.description}</p>
           </div>
           <button
