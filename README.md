@@ -9,7 +9,7 @@ TextBench is a collection of developer-focused text utilities that run entirely 
 ## Features
 
 - **JSON Formatter** — Format, minify, escape, unescape, search, copy, validate, and explore JSON as a collapsible tree.
-- **Text Diff** — Compare arbitrary text or code side by side with independent search controls.
+- **Monaco Diff Editor** — Compare arbitrary text or code side by side with independent search controls.
 - **Timestamp Converter** — Convert between local dates and timestamps in seconds or milliseconds.
 - **Text Counter** — Count characters, non-whitespace characters, Chinese characters, words, and lines.
 - **URL Encoder / Decoder** — Encode and decode URL components or complete URLs.

@@ -45,7 +45,7 @@ const tools: Array<{
   icon: typeof Braces
 }> = [
   { id: 'json-format', label: 'JSON Formatter', description: 'Format, minify, and validate JSON', icon: Braces },
-  { id: 'text-diff', label: 'Text Diff', description: 'Compare text or code side by side', icon: Code2 },
+  { id: 'text-diff', label: 'Monaco Diff Editor', description: 'Compare text or code side by side', icon: Code2 },
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
   { id: 'url-codec', label: 'URL Converter', title: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
@@ -63,20 +63,28 @@ function currentToolFromHash(): ToolId {
 
 function localDateTimeValue(date: Date): string {
   const pad = (value: number, width = 2) => String(value).padStart(width, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 function formatLocalDate(date: Date): string {
   if (Number.isNaN(date.getTime())) return 'Invalid date'
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(date)
+  return localDateTimeValue(date)
+}
+
+function parseLocalDateTime(value: string): Date | null {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/)
+  if (!match) return null
+  const [, year, month, day, hours, minutes, seconds] = match.map(Number)
+  const date = new Date(year, month - 1, day, hours, minutes, seconds)
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+    || date.getHours() !== hours
+    || date.getMinutes() !== minutes
+    || date.getSeconds() !== seconds
+  ) return null
+  return date
 }
 
 function jsonErrorDetail(raw: string, error: unknown): string {
@@ -759,9 +767,9 @@ function DiffChallenge({ theme }: { theme: Theme }) {
   }, [found, level])
 
   const handleEditorClick = (side: ChallengeSide, lineNumber: number, column: number) => {
-    const startsFirstLevel = status === 'ready' && levelIndex === 0
-    if (status !== 'playing' && !startsFirstLevel) return
-    if (startsFirstLevel) setStatus('playing')
+    const startsChallenge = status === 'ready'
+    if (status !== 'playing' && !startsChallenge) return
+    if (startsChallenge) setStatus('playing')
     const text = side === 'left' ? level.left : level.right
     const matchIndex = level.differences.findIndex((difference, index) => {
       if (found.includes(index)) return false
@@ -1222,9 +1230,9 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
   }, [timestamp, unit])
 
   const dateTimestamp = useMemo(() => {
-    const value = new Date(dateInput).getTime()
-    if (Number.isNaN(value)) return ''
-    return String(unit === 's' ? Math.floor(value / 1000) : value)
+    const date = parseLocalDateTime(dateInput)
+    if (!date) return ''
+    return String(unit === 's' ? Math.floor(date.getTime() / 1000) : date.getTime())
   }, [dateInput, unit])
 
   const copyValue = async (value: string) => {
@@ -1276,8 +1284,15 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
 
         <article className="converter-card">
           <div className="card-eyebrow"><Clock3 size={16} />Date → Timestamp</div>
-          <h2>Select a local date and time</h2>
-          <input className="date-input" type="datetime-local" step="1" value={dateInput} onChange={(event) => setDateInput(event.target.value)} />
+          <h2>Enter a local date and time</h2>
+          <input
+            className="date-input"
+            type="text"
+            value={dateInput}
+            onChange={(event) => setDateInput(event.target.value)}
+            placeholder="yyyy-mm-dd HH:mm:ss"
+            aria-label="Local date and time in yyyy-mm-dd HH:mm:ss format"
+          />
           <div className="result-box">
             <span>{unit === 's' ? 'Timestamp in seconds' : 'Timestamp in milliseconds'}</span>
             <strong className="mono">{dateTimestamp || '—'}</strong>
