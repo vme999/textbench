@@ -179,6 +179,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   font-weight: 600;
 }
 .editor-panel-header small { color: var(--text-subtle); font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: .1em; }
+.panel-header-actions { display: flex; align-items: center; gap: 7px; }
+.panel-search-button { height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 7px; border: 0; border-radius: 5px; color: var(--text-subtle); background: transparent; font-size: 9px; font-weight: 600; cursor: pointer; }
+.panel-search-button:hover:not(:disabled) { color: var(--text); background: var(--surface-hover); }
 .editor-container { min-height: 0; flex: 1; }
 .tree-actions { display: flex; align-items: center; gap: 4px; }
 .tree-actions button { height: 27px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border: 0; border-radius: 5px; color: var(--text-subtle); background: transparent; font-size: 9px; cursor: pointer; }
@@ -206,8 +209,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .single-editor-frame { min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .single-editor-frame > section { min-height: 0; flex: 1; }
 .diff-headings { display: grid; grid-template-columns: 1fr 1fr; padding: 0; }
-.diff-headings span { padding: 0 14px; }
-.diff-headings span + span { border-left: 1px solid var(--border); }
+.diff-headings > div { height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 14px; }
+.diff-headings > div + div { border-left: 1px solid var(--border); }
 .error-banner { margin-top: 10px; display: flex; align-items: flex-start; gap: 9px; color: var(--danger); font-size: 12px; line-height: 1.5; }
 .error-banner span { width: 17px; height: 17px; flex: 0 0 auto; display: grid; place-items: center; margin-top: 1px; border: 1px solid currentColor; border-radius: 50%; font-size: 10px; font-weight: 700; }
 
@@ -243,6 +246,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .result-box button { position: absolute; right: 10px; top: 50%; width: 30px; height: 30px; display: grid; place-items: center; transform: translateY(-50%); border: 0; border-radius: 6px; background: transparent; color: var(--text-subtle); cursor: pointer; }
 .result-box button:hover { color: var(--text); background: var(--surface-hover); }
 .tool-hint { margin: 14px 2px 0; color: var(--text-subtle); font-size: 11px; }
+.url-codec-tool { min-height: 560px; }
+.url-panels { min-height: 0; }
+.url-panels .editor-panel textarea { width: 100%; min-height: 0; flex: 1; display: block; resize: none; padding: 18px; border: 0; outline: 0; color: var(--text); background: var(--editor-bg); font-family: "DM Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.7; }
+.url-panels .editor-panel textarea::placeholder { color: var(--text-subtle); }
 
 .counter-tool { max-width: 1080px; margin: 0 auto; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 15px; }
@@ -272,6 +279,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   .main-area { height: calc(100vh - 110px); }
   .topbar { min-height: 70px; padding: 11px 16px; }
   .workspace { padding: 13px; }
+  .toolbar { flex-wrap: wrap; }
+  .toolbar-group { flex-wrap: wrap; }
   .split-editors, .converter-grid { grid-template-columns: 1fr; }
   .split-editors { grid-template-rows: repeat(2, minmax(300px, 1fr)); }
   .tool-layout { min-height: 700px; }

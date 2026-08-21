@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Editor, { DiffEditor, type DiffOnMount } from '@monaco-editor/react'
+import Editor, { DiffEditor, type DiffOnMount, type OnMount } from '@monaco-editor/react'
 import {
   AlignLeft,
   Braces,
@@ -17,14 +17,16 @@ import {
   Minimize2,
   Moon,
   Play,
+  Search,
   Sun,
 } from 'lucide-react'
 
-type ToolId = 'json-format' | 'text-diff' | 'timestamp' | 'word-count'
+type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'timestamp' | 'word-count'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 type JsonViewMode = 'tree' | 'text'
+type MonacoEditor = Parameters<OnMount>[0]
 
 const tools: Array<{
   id: ToolId
@@ -34,6 +36,7 @@ const tools: Array<{
 }> = [
   { id: 'json-format', label: 'JSON Formatter', description: 'Format, minify, and validate JSON', icon: Braces },
   { id: 'text-diff', label: 'Text Diff', description: 'Compare text or code side by side', icon: Code2 },
+  { id: 'url-codec', label: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
 ]
@@ -72,6 +75,12 @@ function jsonErrorDetail(raw: string, error: unknown): string {
   const line = before.split('\n').length
   const column = offset - before.lastIndexOf('\n')
   return `${message} (line ${line}, column ${column})`
+}
+
+function openEditorSearch(editor: MonacoEditor | null) {
+  if (!editor) return
+  editor.focus()
+  void editor.getAction('actions.find')?.run()
 }
 
 function App() {
@@ -158,6 +167,7 @@ function App() {
         <section className="workspace">
           {activeTool === 'json-format' && <JsonFormatter theme={theme} notify={notify} />}
           {activeTool === 'text-diff' && <TextDiff theme={theme} notify={notify} />}
+          {activeTool === 'url-codec' && <UrlCodec notify={notify} />}
           {activeTool === 'timestamp' && <TimestampConverter notify={notify} />}
           {activeTool === 'word-count' && <WordCounter />}
         </section>
@@ -175,6 +185,9 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useState<JsonViewMode>('tree')
   const [treeState, setTreeState] = useState({ revision: 0, expanded: true })
+  const sourceEditorRef = useRef<MonacoEditor | null>(null)
+  const resultEditorRef = useRef<MonacoEditor | null>(null)
+  const pendingResultSearch = useRef(false)
 
   const transform = (compact: boolean) => {
     if (!source.trim()) {
@@ -214,12 +227,71 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
     setTreeState((state) => ({ revision: state.revision + 1, expanded }))
   }
 
+  const escapeJson = () => {
+    if (!source) {
+      setError('Paste JSON into the left editor first')
+      return
+    }
+    const escaped = JSON.stringify(source).slice(1, -1)
+    setResult(escaped)
+    setParsed(undefined)
+    setViewMode('text')
+    setError('')
+    notify('JSON escaped')
+  }
+
+  const unescapeJson = () => {
+    if (!source) {
+      setError('Paste escaped JSON into the left editor first')
+      return
+    }
+    try {
+      const trimmed = source.trim()
+      const decoded = trimmed.startsWith('"') && trimmed.endsWith('"')
+        ? JSON.parse(trimmed)
+        : JSON.parse(`"${trimmed}"`)
+      if (typeof decoded !== 'string') throw new Error('The input is not an escaped JSON string')
+      setResult(decoded)
+      try {
+        setParsed(JSON.parse(decoded) as JsonValue)
+      } catch {
+        setParsed(undefined)
+      }
+      setViewMode('text')
+      setError('')
+      notify('JSON unescaped')
+    } catch (caught) {
+      setResult('')
+      setParsed(undefined)
+      setError(caught instanceof Error ? caught.message : 'Unable to unescape JSON')
+    }
+  }
+
+  const searchResult = () => {
+    if (viewMode === 'text' && resultEditorRef.current) {
+      openEditorSearch(resultEditorRef.current)
+      return
+    }
+    pendingResultSearch.current = true
+    setViewMode('text')
+  }
+
+  const onResultEditorMount: OnMount = (editor) => {
+    resultEditorRef.current = editor
+    if (pendingResultSearch.current) {
+      pendingResultSearch.current = false
+      window.setTimeout(() => openEditorSearch(editor), 0)
+    }
+  }
+
   return (
     <div className="tool-layout editor-tool">
       <div className="toolbar">
         <div className="toolbar-group">
           <button className="primary-button" onClick={() => transform(false)}><Play size={15} fill="currentColor" />Format</button>
           <button className="secondary-button" onClick={() => transform(true)}><Minimize2 size={15} />Minify</button>
+          <button className="secondary-button" onClick={escapeJson}>Escape</button>
+          <button className="secondary-button" onClick={unescapeJson}>Unescape</button>
         </div>
         <div className="toolbar-group">
           {parsed !== undefined && (
@@ -234,10 +306,15 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
       </div>
 
       <div className="split-editors">
-        <EditorPanel title="Raw JSON" badge="INPUT">
+        <EditorPanel
+          title="Raw JSON"
+          badge="INPUT"
+          headerAction={<PanelSearchButton onClick={() => openEditorSearch(sourceEditorRef.current)} />}
+        >
           <Editor
             value={source}
             onChange={(value) => setSource(value ?? '')}
+            onMount={(editor) => { sourceEditorRef.current = editor }}
             language="json"
             theme={theme === 'dark' ? 'vs-dark' : 'light'}
             options={editorOptions(false)}
@@ -246,12 +323,15 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
         <div className="editor-panel">
           <div className="editor-panel-header">
             <span>Formatted result</span>
-            {viewMode === 'tree' && parsed !== undefined ? (
-              <div className="tree-actions">
-                <button onClick={() => setAllExpanded(true)} title="Expand all"><ChevronsDown size={14} />Expand all</button>
-                <button onClick={() => setAllExpanded(false)} title="Collapse all"><ChevronsUp size={14} />Collapse all</button>
-              </div>
-            ) : <small>OUTPUT</small>}
+            <div className="panel-header-actions">
+              {viewMode === 'tree' && parsed !== undefined && (
+                <div className="tree-actions">
+                  <button onClick={() => setAllExpanded(true)} title="Expand all"><ChevronsDown size={14} />Expand all</button>
+                  <button onClick={() => setAllExpanded(false)} title="Collapse all"><ChevronsUp size={14} />Collapse all</button>
+                </div>
+              )}
+              <PanelSearchButton onClick={searchResult} disabled={!result} />
+            </div>
           </div>
           <div className="editor-container">
             {viewMode === 'tree' ? (
@@ -259,6 +339,7 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
             ) : (
               <Editor
                 value={result}
+                onMount={onResultEditorMount}
                 language="json"
                 theme={theme === 'dark' ? 'vs-dark' : 'light'}
                 options={editorOptions(true)}
@@ -369,7 +450,10 @@ function TextDiff({ theme, notify }: { theme: Theme; notify: (message: string) =
         <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
       </div>
       <div className="single-editor-frame">
-        <div className="diff-headings"><span>Original</span><span>Modified</span></div>
+        <div className="diff-headings">
+          <div><span>Original</span><PanelSearchButton onClick={() => openEditorSearch(diffRef.current?.getOriginalEditor() ?? null)} /></div>
+          <div><span>Modified</span><PanelSearchButton onClick={() => openEditorSearch(diffRef.current?.getModifiedEditor() ?? null)} /></div>
+        </div>
         <DiffEditor
           original=""
           modified=""
@@ -410,11 +494,101 @@ function editorOptions(readOnly: boolean) {
   }
 }
 
-function EditorPanel({ title, badge, children }: { title: string; badge: string; children: React.ReactNode }) {
+function PanelSearchButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button className="panel-search-button" onClick={onClick} disabled={disabled} title="Search" aria-label="Search this panel">
+      <Search size={14} />Search
+    </button>
+  )
+}
+
+function EditorPanel({
+  title,
+  badge,
+  headerAction,
+  children,
+}: {
+  title: string
+  badge: string
+  headerAction?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
     <div className="editor-panel">
-      <div className="editor-panel-header"><span>{title}</span><small>{badge}</small></div>
+      <div className="editor-panel-header">
+        <span>{title}</span>
+        <div className="panel-header-actions"><small>{badge}</small>{headerAction}</div>
+      </div>
       <div className="editor-container">{children}</div>
+    </div>
+  )
+}
+
+function UrlCodec({ notify }: { notify: (message: string) => void }) {
+  const [input, setInput] = useState('')
+  const [output, setOutput] = useState('')
+  const [mode, setMode] = useState<'component' | 'url'>('component')
+  const [error, setError] = useState('')
+
+  const transformUrl = (operation: 'encode' | 'decode') => {
+    if (!input) {
+      setOutput('')
+      setError('Enter a URL or text to process')
+      return
+    }
+    try {
+      const next = operation === 'encode'
+        ? mode === 'component' ? encodeURIComponent(input) : encodeURI(input)
+        : mode === 'component' ? decodeURIComponent(input) : decodeURI(input)
+      setOutput(next)
+      setError('')
+      notify(operation === 'encode' ? 'URL encoded' : 'URL decoded')
+    } catch (caught) {
+      setOutput('')
+      setError(caught instanceof Error ? caught.message : 'Unable to process this value')
+    }
+  }
+
+  const copyOutput = async () => {
+    if (!output) return
+    await navigator.clipboard.writeText(output)
+    notify('Result copied')
+  }
+
+  const clear = () => {
+    setInput('')
+    setOutput('')
+    setError('')
+  }
+
+  return (
+    <div className="tool-layout editor-tool url-codec-tool">
+      <div className="toolbar">
+        <div className="toolbar-group">
+          <button className="primary-button" onClick={() => transformUrl('encode')}>Encode</button>
+          <button className="secondary-button" onClick={() => transformUrl('decode')}>Decode</button>
+          <div className="view-switcher" aria-label="Encoding scope">
+            <button className={mode === 'component' ? 'active' : ''} onClick={() => setMode('component')}>Component</button>
+            <button className={mode === 'url' ? 'active' : ''} onClick={() => setMode('url')}>Full URL</button>
+          </div>
+        </div>
+        <div className="toolbar-group">
+          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy result</button>
+          <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
+        </div>
+      </div>
+      <div className="split-editors url-panels">
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Input</span><small>RAW</small></div>
+          <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Enter a URL, query parameter, or text…" autoFocus />
+        </div>
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Result</span><small>OUTPUT</small></div>
+          <textarea value={output} readOnly placeholder="The encoded or decoded result will appear here…" />
+        </div>
+      </div>
+      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      <p className="tool-hint">Component mode encodes reserved URL characters. Full URL mode preserves URL structure such as : / ? &amp; = and #.</p>
     </div>
   )
 }
