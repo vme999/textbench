@@ -137,6 +137,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .editor-tool { display: flex; flex-direction: column; }
 .toolbar { min-height: 41px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .toolbar-group, .diff-legend { display: flex; align-items: center; gap: 8px; }
+.view-switcher { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-raised); }
+.view-switcher button { height: 27px; padding: 0 9px; border: 0; border-radius: 4px; background: transparent; color: var(--text-subtle); font-size: 10px; font-weight: 600; cursor: pointer; }
+.view-switcher button.active { color: var(--accent-strong); background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
 .diff-legend { gap: 18px; color: var(--text-muted); font-size: 11px; }
 .diff-legend span { display: flex; align-items: center; gap: 7px; }
 .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
@@ -180,6 +183,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 .editor-panel-header small { color: var(--text-subtle); font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: .1em; }
 .editor-container { min-height: 0; flex: 1; }
+.tree-actions { display: flex; align-items: center; gap: 4px; }
+.tree-actions button { height: 27px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border: 0; border-radius: 5px; color: var(--text-subtle); background: transparent; font-size: 9px; cursor: pointer; }
+.tree-actions button:hover { color: var(--text); background: var(--surface-hover); }
+.json-tree { height: 100%; overflow: auto; padding: 13px 12px 30px; background: var(--editor-bg); font-family: "DM Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.8; }
+.json-tree-empty { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; color: var(--text-subtle); background: var(--editor-bg); font-size: 11px; }
+.json-tree-empty svg { opacity: .45; }
+.json-tree-row { min-height: 24px; display: flex; align-items: center; white-space: nowrap; }
+.json-tree-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.json-tree-children { margin-left: 8px; padding-left: 17px; border-left: 1px solid var(--border); }
+.tree-toggle { width: 20px; height: 22px; flex: 0 0 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--text-subtle); background: transparent; cursor: pointer; }
+.tree-toggle:hover { color: var(--text); background: var(--surface-hover); }
+.tree-spacer { width: 20px; flex: 0 0 20px; }
+.tree-key { color: var(--text); }
+.tree-key.index { color: var(--text-subtle); }
+.tree-colon { margin: 0 8px 0 5px; color: var(--text-subtle); }
+.tree-summary { margin-left: 8px; color: var(--text-subtle); font-size: 11px; }
+.tree-value.string { color: #188038; }
+.tree-value.number { color: #1967d2; }
+.tree-value.boolean { color: #8e24aa; }
+.tree-value.null { color: var(--text-subtle); font-style: italic; }
+:root[data-theme="dark"] .tree-value.string { color: #a9ee44; }
+:root[data-theme="dark"] .tree-value.number { color: #69a9ff; }
+:root[data-theme="dark"] .tree-value.boolean { color: #d69cff; }
 .single-editor-frame { min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .single-editor-frame > section { min-height: 0; flex: 1; }
 .diff-headings { display: grid; grid-template-columns: 1fr 1fr; padding: 0; }

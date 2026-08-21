@@ -4,7 +4,10 @@ import {
   AlignLeft,
   Braces,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronsDown,
+  ChevronsUp,
   Clipboard,
   Clock3,
   Code2,
@@ -21,6 +24,8 @@ import {
 type ToolId = 'json-format' | 'text-diff' | 'timestamp' | 'word-count'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
+type JsonViewMode = 'tree' | 'text'
 
 const tools: Array<{
   id: ToolId
@@ -72,9 +77,7 @@ function jsonErrorDetail(raw: string, error: unknown): string {
 
 function App() {
   const [activeTool, setActiveTool] = useState<ToolId>(currentToolFromHash)
-  const [theme, setTheme] = useState<Theme>(() =>
-    window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
-  )
+  const [theme, setTheme] = useState<Theme>('light')
   const [toast, setToast] = useState('')
 
   useEffect(() => {
@@ -172,7 +175,10 @@ function App() {
 function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: string) => void }) {
   const [source, setSource] = useState('')
   const [result, setResult] = useState('')
+  const [parsed, setParsed] = useState<JsonValue | undefined>()
   const [error, setError] = useState('')
+  const [viewMode, setViewMode] = useState<JsonViewMode>('tree')
+  const [treeState, setTreeState] = useState({ revision: 0, expanded: true })
 
   const transform = (compact: boolean) => {
     if (!source.trim()) {
@@ -181,12 +187,16 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
       return
     }
     try {
-      const parsed: unknown = JSON.parse(source)
-      setResult(JSON.stringify(parsed, null, compact ? 0 : 2))
+      const nextValue = JSON.parse(source) as JsonValue
+      setParsed(nextValue)
+      setResult(JSON.stringify(nextValue, null, compact ? 0 : 2))
+      setViewMode(compact ? 'text' : 'tree')
+      setTreeState((state) => ({ revision: state.revision + 1, expanded: true }))
       setError('')
       notify(compact ? 'JSON 已压缩' : 'JSON 已格式化')
     } catch (caught) {
       setResult('')
+      setParsed(undefined)
       setError(jsonErrorDetail(source, caught))
     }
   }
@@ -200,7 +210,12 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
   const clear = () => {
     setSource('')
     setResult('')
+    setParsed(undefined)
     setError('')
+  }
+
+  const setAllExpanded = (expanded: boolean) => {
+    setTreeState((state) => ({ revision: state.revision + 1, expanded }))
   }
 
   return (
@@ -211,6 +226,12 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
           <button className="secondary-button" onClick={() => transform(true)}><Minimize2 size={15} />压缩</button>
         </div>
         <div className="toolbar-group">
+          {parsed !== undefined && (
+            <div className="view-switcher" aria-label="结果展示方式">
+              <button className={viewMode === 'tree' ? 'active' : ''} onClick={() => setViewMode('tree')}>树形</button>
+              <button className={viewMode === 'text' ? 'active' : ''} onClick={() => setViewMode('text')}>源码</button>
+            </div>
+          )}
           <button className="ghost-button" onClick={copy} disabled={!result}><Copy size={15} />复制结果</button>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />清空</button>
         </div>
@@ -226,18 +247,107 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
             options={editorOptions(false)}
           />
         </EditorPanel>
-        <EditorPanel title="格式化结果" badge="OUTPUT">
-          <Editor
-            value={result}
-            language="json"
-            theme={theme === 'dark' ? 'vs-dark' : 'light'}
-            options={editorOptions(true)}
-          />
-        </EditorPanel>
+        <div className="editor-panel">
+          <div className="editor-panel-header">
+            <span>格式化结果</span>
+            {viewMode === 'tree' && parsed !== undefined ? (
+              <div className="tree-actions">
+                <button onClick={() => setAllExpanded(true)} title="全部展开"><ChevronsDown size={14} />全部展开</button>
+                <button onClick={() => setAllExpanded(false)} title="全部折叠"><ChevronsUp size={14} />全部折叠</button>
+              </div>
+            ) : <small>OUTPUT</small>}
+          </div>
+          <div className="editor-container">
+            {viewMode === 'tree' ? (
+              <JsonTree value={parsed} treeState={treeState} />
+            ) : (
+              <Editor
+                value={result}
+                language="json"
+                theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                options={editorOptions(true)}
+              />
+            )}
+          </div>
+        </div>
       </div>
       {error && <div className="error-banner"><span>!</span>{error}</div>}
     </div>
   )
+}
+
+function JsonTree({ value, treeState }: { value: JsonValue | undefined; treeState: { revision: number; expanded: boolean } }) {
+  if (value === undefined) {
+    return <div className="json-tree-empty"><Braces size={27} /><span>格式化后将在这里显示可折叠的 JSON 树</span></div>
+  }
+
+  return (
+    <div className="json-tree" role="tree" aria-label="JSON 树形结果">
+      <JsonTreeNode label="root" value={value} depth={0} treeState={treeState} />
+    </div>
+  )
+}
+
+function JsonTreeNode({
+  label,
+  value,
+  depth,
+  treeState,
+}: {
+  label: string
+  value: JsonValue
+  depth: number
+  treeState: { revision: number; expanded: boolean }
+}) {
+  const [expanded, setExpanded] = useState(true)
+  const isArray = Array.isArray(value)
+  const isObject = value !== null && typeof value === 'object'
+  const entries = isObject ? Object.entries(value) : []
+  const expandable = entries.length > 0
+
+  useEffect(() => {
+    setExpanded(treeState.expanded)
+  }, [treeState])
+
+  if (!isObject) {
+    return (
+      <div className="json-tree-row" role="treeitem">
+        <span className="tree-spacer" />
+        <span className={`tree-key ${/^\d+$/.test(label) ? 'index' : ''}`}>{label}</span>
+        <span className="tree-colon">:</span>
+        <JsonPrimitive value={value} />
+      </div>
+    )
+  }
+
+  const summary = isArray ? `[${entries.length}]` : `{${entries.length}}`
+  return (
+    <div className="json-tree-node" role="treeitem" aria-expanded={expandable ? expanded : undefined}>
+      <div className="json-tree-row">
+        {expandable ? (
+          <button className="tree-toggle" onClick={() => setExpanded((current) => !current)} aria-label={`${expanded ? '折叠' : '展开'} ${label}`}>
+            {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+          </button>
+        ) : <span className="tree-spacer" />}
+        <span className={`tree-key ${/^\d+$/.test(label) ? 'index' : ''}`}>{label}</span>
+        <span className="tree-summary">{summary}</span>
+      </div>
+      {expanded && expandable && (
+        <div className="json-tree-children" role="group">
+          {entries.map(([key, child]) => (
+            <JsonTreeNode key={`${depth}-${key}`} label={key} value={child} depth={depth + 1} treeState={treeState} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function JsonPrimitive({ value }: { value: JsonValue }) {
+  if (value === null) return <span className="tree-value null">null</span>
+  if (typeof value === 'string') return <span className="tree-value string">&quot;{value}&quot;</span>
+  if (typeof value === 'boolean') return <span className="tree-value boolean">{String(value)}</span>
+  return <span className="tree-value number">{String(value)}</span>
 }
 
 function TextDiff({ theme, notify }: { theme: Theme; notify: (message: string) => void }) {
