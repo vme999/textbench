@@ -745,14 +745,6 @@ function DiffChallenge({ theme }: { theme: Theme }) {
   }, [status])
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') window.location.hash = 'text-diff'
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  useEffect(() => {
     const decorate = (editor: MonacoEditor | null, side: ChallengeSide, previous: React.MutableRefObject<string[]>) => {
       if (!editor) return
       const text = side === 'left' ? level.left : level.right
@@ -767,7 +759,9 @@ function DiffChallenge({ theme }: { theme: Theme }) {
   }, [found, level])
 
   const handleEditorClick = (side: ChallengeSide, lineNumber: number, column: number) => {
-    if (status !== 'playing') return
+    const startsFirstLevel = status === 'ready' && levelIndex === 0
+    if (status !== 'playing' && !startsFirstLevel) return
+    if (startsFirstLevel) setStatus('playing')
     const text = side === 'left' ? level.left : level.right
     const matchIndex = level.differences.findIndex((difference, index) => {
       if (found.includes(index)) return false
@@ -914,7 +908,7 @@ function DiffChallenge({ theme }: { theme: Theme }) {
           </>
         )}
       </div>
-      <p className="tool-hint">Click a changed token in either panel. Found differences are highlighted on both sides. Press Esc to return to Text Diff.</p>
+      <p className="tool-hint">Click a changed token in either panel. Found differences are highlighted on both sides.</p>
     </div>
   )
 }
