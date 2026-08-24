@@ -62,6 +62,21 @@ const tools: Array<{
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
 
+const jsonStarter = `{"project":"TextBench","tools":["Markdown Editor","Regex Tester"],"localOnly":true}`
+const jsonStarterValue = JSON.parse(jsonStarter) as JsonValue
+const diffOriginalStarter = `const greeting = 'Hello, TextBench!'
+console.log(greeting)`
+const diffModifiedStarter = `const greeting = 'Hello, developer!'
+console.log(greeting.toUpperCase())`
+const urlStarter = 'https://textbench.dev/search?q=markdown editor&sort=latest'
+const base64Starter = 'Hello, TextBench!'
+const hashStarter = 'TextBench'
+const hashStarterValue = {
+  hex: '22d4f49be4516c834f28a8a3dbf47891999ec9d2d017a896ec5dcc319a80235a',
+  base64: 'ItT0m+RRbINPKKij2/R4kZmeydLQF6iW7F3MMZqAI1o=',
+}
+const wordCounterStarter = 'TextBench helps developers format, convert, compare, and inspect text locally.'
+
 function currentToolFromHash(): ToolId {
   const hash = window.location.hash.slice(1) as ToolId
   return toolIds.has(hash) ? hash : 'json-format'
@@ -114,6 +129,7 @@ function App() {
   const [activeTool, setActiveTool] = useState<ToolId>(currentToolFromHash)
   const [theme, setTheme] = useState<Theme>('light')
   const [toast, setToast] = useState('')
+  const [sidebarHovered, setSidebarHovered] = useState(false)
 
   useEffect(() => {
     const onHashChange = () => setActiveTool(currentToolFromHash())
@@ -134,14 +150,15 @@ function App() {
   const switchTool = (tool: ToolId) => {
     window.location.hash = tool
     setActiveTool(tool)
+    setSidebarHovered(false)
   }
 
   const notify = (message: string) => setToast(message)
   const activeMeta = tools.find((tool) => tool.id === activeTool)!
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${sidebarHovered ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
+      <aside className="sidebar" onMouseEnter={() => setSidebarHovered(true)} onMouseLeave={() => setSidebarHovered(false)}>
         <div className="brand">
           <div className="brand-mark"><ChevronRight size={21} strokeWidth={2.8} /></div>
           <div>
@@ -159,6 +176,7 @@ function App() {
                 className={`nav-item ${activeTool === tool.id ? 'active' : ''}`}
                 key={tool.id}
                 onClick={() => switchTool(tool.id)}
+                title={tool.label}
               >
                 <Icon size={18} />
                 <span>{tool.label}</span>
@@ -166,7 +184,6 @@ function App() {
             )
           })}
         </nav>
-
       </aside>
 
       <main className="main-area">
@@ -205,9 +222,9 @@ function App() {
 }
 
 function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: string) => void }) {
-  const [source, setSource] = useState('')
-  const [result, setResult] = useState('')
-  const [parsed, setParsed] = useState<JsonValue | undefined>()
+  const [source, setSource] = useState(jsonStarter)
+  const [result, setResult] = useState(JSON.stringify(jsonStarterValue, null, 2))
+  const [parsed, setParsed] = useState<JsonValue | undefined>(jsonStarterValue)
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useState<JsonViewMode>('tree')
   const [treeState, setTreeState] = useState({ revision: 0, expanded: true })
@@ -481,8 +498,8 @@ function TextDiff({ theme, notify }: { theme: Theme; notify: (message: string) =
           <div><span>Modified</span><PanelSearchButton onClick={() => openEditorSearch(diffRef.current?.getModifiedEditor() ?? null)} /></div>
         </div>
         <DiffEditor
-          original=""
-          modified=""
+          original={diffOriginalStarter}
+          modified={diffModifiedStarter}
           language="text"
           theme={theme === 'dark' ? 'vs-dark' : 'light'}
           onMount={onMount}
@@ -1052,8 +1069,8 @@ function EditorPanel({
 }
 
 function UrlCodec({ notify }: { notify: (message: string) => void }) {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
+  const [input, setInput] = useState(urlStarter)
+  const [output, setOutput] = useState(() => encodeURIComponent(urlStarter))
   const [mode, setMode] = useState<'component' | 'url'>('component')
   const [error, setError] = useState('')
 
@@ -1145,8 +1162,8 @@ function decodeBase64(value: string, urlSafe: boolean): string {
 }
 
 function Base64Codec({ notify }: { notify: (message: string) => void }) {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
+  const [input, setInput] = useState(base64Starter)
+  const [output, setOutput] = useState(() => encodeBase64(base64Starter, false))
   const [mode, setMode] = useState<'standard' | 'url'>('standard')
   const [error, setError] = useState('')
 
@@ -1214,10 +1231,10 @@ function Base64Codec({ notify }: { notify: (message: string) => void }) {
 }
 
 function HashGenerator({ notify }: { notify: (message: string) => void }) {
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(hashStarter)
   const [algorithm, setAlgorithm] = useState<HashAlgorithm>('SHA-256')
   const [encoding, setEncoding] = useState<HashEncoding>('hex')
-  const [hashes, setHashes] = useState<{ hex: string; base64: string } | null>(null)
+  const [hashes, setHashes] = useState<{ hex: string; base64: string } | null>(hashStarterValue)
   const [error, setError] = useState('')
   const output = hashes?.[encoding] ?? ''
   const byteCount = useMemo(() => new TextEncoder().encode(input).length, [input])
@@ -1262,7 +1279,7 @@ function HashGenerator({ notify }: { notify: (message: string) => void }) {
           <button className="primary-button" onClick={generate}><Fingerprint size={15} />Generate</button>
           <div className="view-switcher" aria-label="Hash algorithm">
             {(['SHA-256', 'SHA-384', 'SHA-512'] as HashAlgorithm[]).map((item) => (
-              <button key={item} className={algorithm === item ? 'active' : ''} onClick={() => setAlgorithm(item)}>{item}</button>
+              <button key={item} className={algorithm === item ? 'active' : ''} onClick={() => { setAlgorithm(item); setHashes(null) }}>{item}</button>
             ))}
           </div>
         </div>
@@ -1389,7 +1406,7 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
 }
 
 function WordCounter() {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(wordCounterStarter)
   const stats = useMemo(() => {
     const characters = Array.from(text).length
     const nonWhitespace = Array.from(text).filter((character) => !/\s/u.test(character)).length

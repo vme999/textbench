@@ -56,20 +56,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   outline-offset: 2px;
 }
 
-.app-shell { min-height: 100vh; display: grid; grid-template-columns: 238px minmax(0, 1fr); }
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 64px minmax(0, 1fr); transition: grid-template-columns .18s ease; }
+.app-shell.sidebar-expanded { grid-template-columns: 238px minmax(0, 1fr); }
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-  width: 238px;
+  width: 64px;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 18px;
+  overflow: hidden;
+  padding: 24px 8px 18px;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
+  transition: width .18s ease, padding .18s ease;
   z-index: 10;
 }
+.app-shell.sidebar-expanded .sidebar { width: 238px; padding-right: 16px; padding-left: 16px; }
 
-.brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 28px; }
+.brand { display: flex; align-items: center; gap: 11px; min-width: 206px; padding: 0 8px 28px; }
 .brand-mark {
   width: 35px;
   height: 35px;
@@ -82,8 +86,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
 .brand-tagline { margin-top: 3px; color: var(--text-subtle); font-size: 10px; letter-spacing: .03em; }
+.sidebar-collapsed .brand { justify-content: center; padding-right: 0; padding-left: 0; }
+.sidebar-collapsed .brand > div:last-child, .sidebar-collapsed .nav-label, .sidebar-collapsed .nav-item span { display: none; }
 .nav-label { padding: 0 12px 9px; color: var(--text-subtle); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.tool-nav { display: flex; flex-direction: column; gap: 4px; }
+.tool-nav { min-width: 206px; display: flex; flex-direction: column; gap: 4px; }
 .nav-item {
   width: 100%;
   display: flex;
@@ -100,6 +106,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   cursor: pointer;
   transition: .16s ease;
 }
+.sidebar-collapsed .nav-item { width: 48px; justify-content: center; padding: 10px 0; }
 .nav-item:hover { color: var(--text); background: var(--surface-hover); }
 .nav-item.active { color: var(--accent-strong); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
 .main-area { grid-column: 2; min-width: 0; height: 100vh; display: flex; flex-direction: column; }
@@ -403,11 +410,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 
 @media (max-width: 800px) {
   .app-shell { display: block; }
-  .sidebar { position: static; width: auto; height: auto; padding: 14px 16px 0; border-right: 0; border-bottom: 1px solid var(--border); }
+  .sidebar, .app-shell.sidebar-expanded .sidebar { position: static; width: auto; height: auto; padding: 14px 16px 0; border-right: 0; border-bottom: 1px solid var(--border); }
   .brand { padding: 0 2px 13px; }
   .brand-tagline, .nav-label { display: none; }
   .tool-nav { flex-direction: row; gap: 5px; padding-bottom: 10px; overflow-x: auto; }
   .nav-item { width: auto; flex: 0 0 auto; padding: 8px 10px; }
+  .sidebar-collapsed .brand { justify-content: flex-start; padding: 0 2px 13px; }
+  .sidebar-collapsed .brand > div:last-child { display: block; }
+  .sidebar-collapsed .nav-item { width: auto; justify-content: flex-start; padding: 8px 10px; }
+  .sidebar-collapsed .nav-item span { display: inline; }
   .main-area { height: calc(100vh - 110px); }
   .topbar { min-height: 70px; padding: 11px 16px; }
   .workspace { padding: 13px; }
