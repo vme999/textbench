@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Editor, { DiffEditor, type DiffOnMount, type OnMount } from '@monaco-editor/react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
   AlignLeft,
   ArrowRight,
@@ -15,6 +17,7 @@ import {
   Code2,
   Copy,
   Eraser,
+  FileText,
   Fingerprint,
   Gamepad2,
   Hash,
@@ -22,13 +25,14 @@ import {
   Minimize2,
   Moon,
   Play,
+  Regex,
   RotateCcw,
   Search,
   Sun,
   Trophy,
 } from 'lucide-react'
 
-type ToolId = 'json-format' | 'text-diff' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count' | 'diff-challenge'
+type ToolId = 'json-format' | 'text-diff' | 'markdown-editor' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count' | 'regex-tester' | 'diff-challenge'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -46,8 +50,10 @@ const tools: Array<{
 }> = [
   { id: 'json-format', label: 'JSON Formatter', description: 'Format, minify, and validate JSON', icon: Braces },
   { id: 'text-diff', label: 'Monaco Diff Editor', description: 'Compare text or code side by side', icon: Code2 },
+  { id: 'markdown-editor', label: 'Markdown Editor', description: 'Write Markdown with a live preview', icon: FileText },
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
+  { id: 'regex-tester', label: 'Regex Tester', description: 'Test regular expressions with live match details', icon: Regex },
   { id: 'url-codec', label: 'URL Converter', title: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
   { id: 'base64-codec', label: 'Base64 Converter', title: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
   { id: 'hash-generator', label: 'Hash Generator', description: 'Generate SHA hashes from UTF-8 text', icon: Fingerprint },
@@ -182,9 +188,11 @@ function App() {
         <section className="workspace">
           {activeTool === 'json-format' && <JsonFormatter theme={theme} notify={notify} />}
           {activeTool === 'text-diff' && <TextDiff theme={theme} notify={notify} />}
+          {activeTool === 'markdown-editor' && <MarkdownEditor theme={theme} notify={notify} />}
           {activeTool === 'url-codec' && <UrlCodec notify={notify} />}
           {activeTool === 'timestamp' && <TimestampConverter notify={notify} />}
           {activeTool === 'word-count' && <WordCounter />}
+          {activeTool === 'regex-tester' && <RegexTester />}
           {activeTool === 'base64-codec' && <Base64Codec notify={notify} />}
           {activeTool === 'hash-generator' && <HashGenerator notify={notify} />}
           {activeTool === 'diff-challenge' && <DiffChallenge theme={theme} />}
@@ -490,6 +498,81 @@ function TextDiff({ theme, notify }: { theme: Theme; notify: (message: string) =
             originalEditable: true,
           }}
         />
+      </div>
+    </div>
+  )
+}
+
+const markdownStarter = `# Markdown Editor
+
+Write Markdown on the left and see the rendered result immediately.
+
+## Quick start
+
+- **Bold text** and *italic text*
+- [Links](https://example.com)
+- Task lists and tables are supported
+
+\`\`\`ts
+const greeting = 'Hello, TextBench!'
+\`\`\`
+
+| Tool | Status |
+| --- | --- |
+| Live preview | Ready |
+`
+
+function MarkdownEditor({ theme, notify }: { theme: Theme; notify: (message: string) => void }) {
+  const [source, setSource] = useState(markdownStarter)
+  const sourceEditorRef = useRef<MonacoEditor | null>(null)
+
+  const copy = async () => {
+    if (!source) return
+    await navigator.clipboard.writeText(source)
+    notify('Markdown copied')
+  }
+
+  const clear = () => {
+    setSource('')
+    notify('Markdown cleared')
+  }
+
+  return (
+    <div className="tool-layout editor-tool markdown-tool">
+      <div className="toolbar">
+        <div className="markdown-status">Live preview updates as you type</div>
+        <div className="toolbar-group">
+          <button className="ghost-button" onClick={copy} disabled={!source}><Copy size={15} />Copy Markdown</button>
+          <button className="ghost-button" onClick={clear} disabled={!source}><Eraser size={15} />Clear</button>
+        </div>
+      </div>
+
+      <div className="split-editors markdown-panels">
+        <EditorPanel
+          title="Markdown source"
+          badge=".MD"
+          headerAction={<PanelSearchButton onClick={() => openEditorSearch(sourceEditorRef.current)} />}
+        >
+          <Editor
+            value={source}
+            onChange={(value) => setSource(value ?? '')}
+            onMount={(editor) => { sourceEditorRef.current = editor }}
+            language="markdown"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
+            options={editorOptions(false)}
+          />
+        </EditorPanel>
+
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Live preview</span><small>RENDERED</small></div>
+          <div className="markdown-preview">
+            {source ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{source}</ReactMarkdown>
+            ) : (
+              <div className="markdown-preview-empty"><FileText size={27} /><span>Your rendered Markdown will appear here</span></div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1339,6 +1422,111 @@ function WordCounter() {
       <p className="tool-hint">Characters include letters, punctuation, spaces, and line breaks. Non-whitespace excludes all spacing characters.</p>
     </div>
   )
+}
+
+type RegexMatch = {
+  value: string
+  index: number
+  groups: string[]
+}
+
+function RegexTester() {
+  const [pattern, setPattern] = useState('\\b(?:TextBench|regex)\\b')
+  const [flags, setFlags] = useState('gi')
+  const [text, setText] = useState('TextBench includes a Regex Tester. Use regex patterns to find text in real time.')
+  const result = useMemo(() => {
+    if (!pattern) return { matches: [] as RegexMatch[], error: '' }
+
+    try {
+      const activeFlags = flags.includes('g') ? flags : `${flags}g`
+      const expression = new RegExp(pattern, activeFlags)
+      const matches: RegexMatch[] = []
+      let match: RegExpExecArray | null
+
+      while ((match = expression.exec(text)) !== null && matches.length < 500) {
+        matches.push({ value: match[0], index: match.index, groups: match.slice(1).map((group) => group ?? '') })
+        if (!match[0]) expression.lastIndex += 1
+      }
+
+      return { matches, error: '' }
+    } catch (caught) {
+      return { matches: [] as RegexMatch[], error: caught instanceof Error ? caught.message : 'Invalid regular expression' }
+    }
+  }, [flags, pattern, text])
+
+  const toggleFlag = (flag: string) => {
+    setFlags((current) => {
+      const next = current.includes(flag) ? current.replace(flag, '') : `${current}${flag}`
+      return ['g', 'i', 'm', 's', 'u'].filter((item) => next.includes(item)).join('')
+    })
+  }
+
+  const clear = () => {
+    setPattern('')
+    setText('')
+  }
+
+  return (
+    <div className="regex-tool">
+      <div className="regex-controls">
+        <label className="regex-pattern-input">
+          <span>/</span>
+          <input value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Enter a regular expression" aria-label="Regular expression" spellCheck={false} />
+          <span>/</span>
+        </label>
+        <div className="regex-flags" aria-label="Regular expression flags">
+          {['g', 'i', 'm', 's', 'u'].map((flag) => (
+            <button key={flag} className={flags.includes(flag) ? 'active' : ''} onClick={() => toggleFlag(flag)} aria-pressed={flags.includes(flag)} title={`Toggle ${flag} flag`}>{flag}</button>
+          ))}
+        </div>
+        <button className="ghost-button" onClick={clear} disabled={!pattern && !text}><Eraser size={15} />Clear</button>
+      </div>
+
+      <div className="regex-workspace">
+        <section className="text-area-card regex-text-card">
+          <div className="text-area-head"><span>Test text</span><span>{text.length.toLocaleString('en-US')} characters</span></div>
+          <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="Paste text to test your expression…" autoFocus spellCheck={false} />
+        </section>
+
+        <section className="editor-panel regex-result-panel">
+          <div className="editor-panel-header"><span>Match results</span><small>{result.error ? 'INVALID' : `${result.matches.length} MATCH${result.matches.length === 1 ? '' : 'ES'}`}</small></div>
+          {result.error ? (
+            <div className="regex-error"><span>!</span>{result.error}</div>
+          ) : (
+            <>
+              <RegexHighlightedText text={text} matches={result.matches} />
+              <div className="regex-match-list">
+                {result.matches.length ? result.matches.map((match, index) => (
+                  <div className="regex-match" key={`${match.index}-${index}`}>
+                    <span>#{index + 1} · index {match.index}</span>
+                    <code>{match.value || '(empty match)'}</code>
+                    {match.groups.map((group, groupIndex) => <small key={groupIndex}>Group {groupIndex + 1}: {group || '(empty)'}</small>)}
+                  </div>
+                )) : <div className="regex-empty"><Regex size={25} /><span>{pattern ? 'No matches found' : 'Enter a pattern to begin testing'}</span></div>}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+      <p className="tool-hint">Matches are evaluated locally as JavaScript regular expressions. The global flag is used automatically to show every match.</p>
+    </div>
+  )
+}
+
+function RegexHighlightedText({ text, matches }: { text: string; matches: RegexMatch[] }) {
+  if (!text) return <div className="regex-highlight regex-highlight-empty">Your highlighted matches will appear here</div>
+
+  const fragments: React.ReactNode[] = []
+  let cursor = 0
+  matches.forEach((match, index) => {
+    if (!match.value || match.index < cursor) return
+    fragments.push(text.slice(cursor, match.index))
+    fragments.push(<mark key={`${match.index}-${index}`}>{match.value}</mark>)
+    cursor = match.index + match.value.length
+  })
+  fragments.push(text.slice(cursor))
+
+  return <div className="regex-highlight">{fragments}</div>
 }
 
 function StatCard({ label, value, accent = false }: { label: string; value: number; accent?: boolean }) {

@@ -10,8 +10,10 @@ TextBench is a collection of developer-focused text utilities that run entirely 
 
 - **JSON Formatter** — Format, minify, escape, unescape, search, copy, validate, and explore JSON as a collapsible tree.
 - **Monaco Diff Editor** — Compare arbitrary text or code side by side with independent search controls.
+- **Markdown Editor** — Write Markdown in Monaco and view a live GFM preview side by side.
 - **Timestamp Converter** — Convert between local dates and timestamps in seconds or milliseconds.
 - **Text Counter** — Count characters, non-whitespace characters, Chinese characters, words, and lines.
+- **Regex Tester** — Test JavaScript regular expressions with flags, highlighted matches, and capture-group details.
 - **URL Encoder / Decoder** — Encode and decode URL components or complete URLs.
 - **Base64 Encoder / Decoder** — Encode and decode UTF-8 text using Standard Base64 or Base64URL.
 - **Hash Generator** — Generate SHA-256, SHA-384, and SHA-512 hashes with Hex or Base64 output.

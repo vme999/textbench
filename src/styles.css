@@ -161,6 +161,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .ghost-button:disabled, button:disabled { opacity: .38; cursor: default; }
 
 .split-editors { min-height: 0; flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.markdown-status { display: flex; align-items: center; color: var(--text-muted); font-size: 11px; }
+.markdown-preview { height: 100%; overflow: auto; padding: 20px 22px 32px; color: var(--text); background: var(--editor-bg); font-size: 14px; line-height: 1.7; }
+.markdown-preview > :first-child { margin-top: 0; }
+.markdown-preview > :last-child { margin-bottom: 0; }
+.markdown-preview h1, .markdown-preview h2, .markdown-preview h3, .markdown-preview h4 { margin: 1.45em 0 .55em; line-height: 1.25; letter-spacing: -.02em; }
+.markdown-preview h1 { padding-bottom: .42em; border-bottom: 1px solid var(--border); font-size: 1.9em; }
+.markdown-preview h2 { padding-bottom: .32em; border-bottom: 1px solid var(--border); font-size: 1.45em; }
+.markdown-preview h3 { font-size: 1.16em; }
+.markdown-preview p, .markdown-preview ul, .markdown-preview ol, .markdown-preview blockquote { margin: .8em 0; }
+.markdown-preview ul, .markdown-preview ol { padding-left: 1.6em; }
+.markdown-preview li + li { margin-top: .28em; }
+.markdown-preview a { color: var(--accent-strong); }
+.markdown-preview code { padding: .14em .36em; border-radius: 4px; color: var(--accent-strong); background: var(--surface-hover); font-family: "DM Mono", ui-monospace, monospace; font-size: .88em; }
+.markdown-preview pre { overflow: auto; margin: 1em 0; padding: 14px; border: 1px solid var(--border); border-radius: 7px; background: color-mix(in srgb, var(--surface-raised) 82%, var(--editor-bg)); }
+.markdown-preview pre code { padding: 0; color: inherit; background: transparent; font-size: 12px; line-height: 1.65; }
+.markdown-preview blockquote { padding: .15em 1em; border-left: 3px solid var(--accent); color: var(--text-muted); }
+.markdown-preview table { width: 100%; border-spacing: 0; border-collapse: collapse; margin: 1em 0; overflow: hidden; border: 1px solid var(--border); border-radius: 7px; }
+.markdown-preview th, .markdown-preview td { padding: 8px 10px; border: 1px solid var(--border); text-align: left; }
+.markdown-preview th { background: var(--surface-raised); font-size: 12px; }
+.markdown-preview input[type="checkbox"] { margin: 0 .48em 0 0; accent-color: var(--accent); }
+.markdown-preview-empty { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; color: var(--text-subtle); font-size: 11px; }
+.markdown-preview-empty svg { opacity: .45; }
 .editor-panel, .single-editor-frame { min-height: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 9px; background: var(--editor-bg); box-shadow: var(--shadow); }
 .editor-panel { display: flex; flex-direction: column; }
 .editor-panel-header, .diff-headings {
@@ -335,6 +357,33 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .codec-panels .editor-panel textarea::placeholder { color: var(--text-subtle); }
 
 .counter-tool { max-width: 1080px; margin: 0 auto; }
+.regex-tool { max-width: 1080px; min-height: 560px; display: flex; flex-direction: column; margin: 0 auto; }
+.regex-controls { display: flex; align-items: center; gap: 9px; margin-bottom: 13px; }
+.regex-pattern-input { min-width: 0; flex: 1; height: 40px; display: flex; align-items: center; gap: 7px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--accent-strong); background: var(--surface); font-family: "DM Mono", ui-monospace, monospace; }
+.regex-pattern-input input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; }
+.regex-pattern-input input::placeholder { color: var(--text-subtle); }
+.regex-flags { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.regex-flags button { width: 25px; height: 28px; padding: 0; border: 0; border-radius: 4px; color: var(--text-subtle); background: transparent; font-family: "DM Mono", ui-monospace, monospace; font-size: 12px; font-weight: 600; cursor: pointer; }
+.regex-flags button.active { color: var(--accent-strong); background: var(--accent-soft); }
+.regex-workspace { min-height: 0; flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.regex-text-card, .regex-result-panel { min-height: 0; }
+.regex-text-card { display: flex; flex-direction: column; }
+.regex-text-card textarea { width: 100%; min-height: 0; flex: 1; display: block; resize: none; padding: 18px; border: 0; outline: 0; color: var(--text); background: var(--editor-bg); font-family: "DM Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.7; }
+.regex-text-card textarea::placeholder { color: var(--text-subtle); }
+.regex-result-panel { display: flex; flex-direction: column; }
+.regex-highlight { min-height: 130px; max-height: 38%; overflow: auto; padding: 17px; border-bottom: 1px solid var(--border); color: var(--text); background: var(--editor-bg); white-space: pre-wrap; overflow-wrap: anywhere; font-family: "DM Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.7; }
+.regex-highlight mark { padding: 1px 2px; border-radius: 3px; color: #172007; background: var(--accent); }
+.regex-highlight-empty { display: flex; align-items: center; color: var(--text-subtle); font-family: Inter, ui-sans-serif, sans-serif; font-size: 11px; }
+.regex-match-list { min-height: 0; flex: 1; overflow: auto; padding: 8px; background: var(--editor-bg); }
+.regex-match { display: grid; grid-template-columns: minmax(92px, auto) minmax(0, 1fr); gap: 5px 9px; padding: 10px; border-bottom: 1px solid var(--border); }
+.regex-match:last-child { border-bottom: 0; }
+.regex-match > span, .regex-match small { color: var(--text-subtle); font-family: "DM Mono", ui-monospace, monospace; font-size: 10px; }
+.regex-match code { min-width: 0; overflow: hidden; color: var(--accent-strong); font-family: "DM Mono", ui-monospace, monospace; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.regex-match small { grid-column: 2; }
+.regex-empty, .regex-error { min-height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; color: var(--text-subtle); font-size: 11px; }
+.regex-empty svg { opacity: .45; }
+.regex-error { flex: 1; color: var(--danger); line-height: 1.5; text-align: center; }
+.regex-error span { width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 10px; font-weight: 700; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 15px; }
 .stat-card { min-height: 94px; display: flex; flex-direction: column; justify-content: center; padding: 17px 19px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
 .stat-card span { color: var(--text-muted); font-size: 11px; }
@@ -366,6 +415,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   .toolbar-group { flex-wrap: wrap; }
   .split-editors, .converter-grid { grid-template-columns: 1fr; }
   .split-editors { grid-template-rows: repeat(2, minmax(300px, 1fr)); }
+  .regex-tool { min-height: 700px; }
+  .regex-workspace { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(290px, 1fr)); }
   .tool-layout { min-height: 700px; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .challenge-levels { grid-template-columns: repeat(5, minmax(38px, 1fr)); overflow-x: auto; }
@@ -384,6 +435,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   .diff-legend { gap: 10px; }
   .timestamp-topline { align-items: stretch; flex-direction: column; gap: 10px; }
   .segmented { align-self: flex-start; }
+  .regex-controls { align-items: stretch; flex-wrap: wrap; }
+  .regex-pattern-input { flex-basis: 100%; }
   .converter-card { padding: 18px; }
   .challenge-meta { gap: 7px; }
   .challenge-meta span { padding-left: 7px; }
