@@ -62,8 +62,12 @@ const tools: Array<{
 
 const toolIds = new Set<ToolId>(tools.map((tool) => tool.id))
 
-const jsonStarter = `{"project":"TextBench","tools":["Markdown Editor","Regex Tester"],"localOnly":true}`
-const jsonStarterValue = JSON.parse(jsonStarter) as JsonValue
+const jsonStarterValue: JsonValue = {
+  project: 'TextBench',
+  tools: ['Markdown Editor', 'Regex Tester'],
+  localOnly: true,
+}
+const jsonStarter = JSON.stringify(jsonStarterValue, null, 2)
 const diffOriginalStarter = `const greeting = 'Hello, TextBench!'
 console.log(greeting)`
 const diffModifiedStarter = `const greeting = 'Hello, developer!'
@@ -241,7 +245,9 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
     try {
       const nextValue = JSON.parse(source) as JsonValue
       setParsed(nextValue)
-      setResult(JSON.stringify(nextValue, null, compact ? 0 : 2))
+      const formatted = JSON.stringify(nextValue, null, compact ? 0 : 2)
+      setResult(formatted)
+      if (!compact) setSource(formatted)
       setViewMode(compact ? 'text' : 'tree')
       setTreeState((state) => ({ revision: state.revision + 1, expanded: true }))
       setError('')

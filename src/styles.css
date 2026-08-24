@@ -86,7 +86,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
 .brand-tagline { margin-top: 3px; color: var(--text-subtle); font-size: 10px; letter-spacing: .03em; }
-.sidebar-collapsed .brand { justify-content: center; padding-right: 0; padding-left: 0; }
+.sidebar-collapsed .brand { min-width: 48px; justify-content: center; padding-right: 0; padding-left: 0; }
 .sidebar-collapsed .brand > div:last-child, .sidebar-collapsed .nav-label, .sidebar-collapsed .nav-item span { display: none; }
 .nav-label { padding: 0 12px 9px; color: var(--text-subtle); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .tool-nav { min-width: 206px; display: flex; flex-direction: column; gap: 4px; }
