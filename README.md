@@ -14,6 +14,7 @@ TextBench is a collection of developer-focused text utilities that run entirely 
 - **Timestamp Converter** — Convert between local dates and timestamps in seconds or milliseconds.
 - **Text Counter** — Count characters, non-whitespace characters, Chinese characters, words, and lines.
 - **Regex Tester** — Test JavaScript regular expressions with flags, highlighted matches, and capture-group details.
+- **cURL Formatter** — Extract a request URL, method, and payload from cURL while omitting headers and cookies.
 - **URL Encoder / Decoder** — Encode and decode URL components or complete URLs.
 - **Base64 Encoder / Decoder** — Encode and decode UTF-8 text using Standard Base64 or Base64URL.
 - **Hash Generator** — Generate SHA-256, SHA-384, and SHA-512 hashes with Hex or Base64 output.

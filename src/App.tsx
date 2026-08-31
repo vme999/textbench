@@ -30,9 +30,10 @@ import {
   Search,
   Sun,
   Trophy,
+  Terminal,
 } from 'lucide-react'
 
-type ToolId = 'json-format' | 'text-diff' | 'markdown-editor' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count' | 'regex-tester' | 'diff-challenge'
+type ToolId = 'json-format' | 'text-diff' | 'markdown-editor' | 'curl-formatter' | 'url-codec' | 'base64-codec' | 'hash-generator' | 'timestamp' | 'word-count' | 'regex-tester' | 'diff-challenge'
 type TimestampUnit = 'ms' | 's'
 type Theme = 'dark' | 'light'
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -54,6 +55,7 @@ const tools: Array<{
   { id: 'timestamp', label: 'Timestamp Converter', description: 'Convert between dates and timestamps', icon: Clock3 },
   { id: 'word-count', label: 'Text Counter', description: 'Count characters and words in real time', icon: AlignLeft },
   { id: 'regex-tester', label: 'Regex Tester', description: 'Test regular expressions with live match details', icon: Regex },
+  { id: 'curl-formatter', label: 'cURL Formatter', description: 'Extract request details and remove headers and cookies', icon: Terminal },
   { id: 'url-codec', label: 'URL Converter', title: 'URL Encoder / Decoder', description: 'Encode or decode URLs and URL components', icon: Hash },
   { id: 'base64-codec', label: 'Base64 Converter', title: 'Base64 Encoder / Decoder', description: 'Encode or decode UTF-8 text with Base64', icon: Binary },
   { id: 'hash-generator', label: 'Hash Generator', description: 'Generate SHA hashes from UTF-8 text', icon: Fingerprint },
@@ -80,6 +82,136 @@ const hashStarterValue = {
   base64: 'ItT0m+RRbINPKKij2/R4kZmeydLQF6iW7F3MMZqAI1o=',
 }
 const wordCounterStarter = 'TextBench helps developers format, convert, compare, and inspect text locally.'
+const curlStarter = `curl --url 'https://api.example.com/v1/tasks?status=running&limit=20' \\
+  -H 'accept: application/json' \\
+  -H 'authorization: Bearer [REDACTED]'`
+
+type ParsedCurl = {
+  url: string
+  method: string
+  payload: string
+}
+
+function tokenizeCurl(command: string): string[] {
+  const tokens: string[] = []
+  let token = ''
+  let quote: "'" | '"' | null = null
+  const input = command.replace(/\r\n/gu, '\n')
+
+  const pushToken = () => {
+    if (!token) return
+    tokens.push(token)
+    token = ''
+  }
+
+  for (let index = 0; index < input.length; index += 1) {
+    const character = input[index]
+
+    if (quote) {
+      if (character === quote) {
+        quote = null
+      } else if (quote === '"' && character === '\\' && index + 1 < input.length) {
+        const next = input[index + 1]
+        if (next !== '\n') token += next
+        index += 1
+      } else {
+        token += character
+      }
+      continue
+    }
+
+    if (character === "'" || character === '"') {
+      quote = character
+    } else if (character === '\\' && index + 1 < input.length) {
+      const next = input[index + 1]
+      if (next !== '\n') token += next
+      index += 1
+    } else if (/\s/u.test(character)) {
+      pushToken()
+    } else {
+      token += character
+    }
+  }
+
+  if (quote) throw new Error('The cURL command contains an unclosed quote')
+  pushToken()
+  return tokens
+}
+
+function parseCurl(command: string): ParsedCurl {
+  const tokens = tokenizeCurl(command.trim())
+  if (!tokens.some((token) => token === 'curl' || token.endsWith('/curl'))) {
+    throw new Error('Paste a cURL command to format')
+  }
+
+  let url = ''
+  let explicitMethod = ''
+  let inferredMethod = 'GET'
+  const payloads: string[] = []
+  const takeValue = (index: number, option: string) => {
+    const value = tokens[index + 1]
+    if (value === undefined) throw new Error(`${option} is missing a value`)
+    return value
+  }
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]
+
+    if (token === '--url') {
+      url = takeValue(index, token)
+      index += 1
+    } else if (token.startsWith('--url=')) {
+      url = token.slice('--url='.length)
+    } else if (token === '-X' || token === '--request') {
+      explicitMethod = takeValue(index, token).toUpperCase()
+      index += 1
+    } else if (token.startsWith('--request=')) {
+      explicitMethod = token.slice('--request='.length).toUpperCase()
+    } else if (token.startsWith('-X') && token.length > 2) {
+      explicitMethod = token.slice(2).toUpperCase()
+    } else if (token === '-I' || token === '--head') {
+      explicitMethod = 'HEAD'
+    } else if (token === '-G' || token === '--get') {
+      explicitMethod = 'GET'
+    } else if (['-d', '--data', '--data-raw', '--data-binary', '--data-urlencode', '--json', '-F', '--form', '--form-string'].includes(token)) {
+      payloads.push(takeValue(index, token))
+      inferredMethod = 'POST'
+      index += 1
+    } else {
+      const dataOption = ['--data=', '--data-raw=', '--data-binary=', '--data-urlencode=', '--json=', '--form=', '--form-string=']
+        .find((option) => token.startsWith(option))
+      if (dataOption) {
+        payloads.push(token.slice(dataOption.length))
+        inferredMethod = 'POST'
+      } else if (token.startsWith('-d') && token.length > 2) {
+        payloads.push(token.slice(2))
+        inferredMethod = 'POST'
+      } else if (!url && /^https?:\/\//iu.test(token)) {
+        url = token
+      }
+    }
+  }
+
+  if (!url) throw new Error('No HTTP or HTTPS request URL was found')
+
+  const rawPayload = payloads.join('&')
+  let payload = rawPayload
+  if (rawPayload) {
+    try {
+      payload = JSON.stringify(JSON.parse(rawPayload), null, 2)
+    } catch {
+      // Keep non-JSON request bodies unchanged.
+    }
+  }
+
+  return { url, method: explicitMethod || inferredMethod, payload }
+}
+
+function formatCurlRequest(command: string): string {
+  const { url, method, payload } = parseCurl(command)
+  const summary = `Request URL: ${url}\nRequest Method: ${method}`
+  return payload ? `${summary}\nPayload:\n${payload}` : summary
+}
 
 function currentToolFromHash(): ToolId {
   const hash = window.location.hash.slice(1) as ToolId
@@ -214,6 +346,7 @@ function App() {
           {activeTool === 'timestamp' && <TimestampConverter notify={notify} />}
           {activeTool === 'word-count' && <WordCounter />}
           {activeTool === 'regex-tester' && <RegexTester />}
+          {activeTool === 'curl-formatter' && <CurlFormatter notify={notify} />}
           {activeTool === 'base64-codec' && <Base64Codec notify={notify} />}
           {activeTool === 'hash-generator' && <HashGenerator notify={notify} />}
           {activeTool === 'diff-challenge' && <DiffChallenge theme={theme} />}
@@ -1070,6 +1203,70 @@ function EditorPanel({
         <div className="panel-header-actions"><small>{badge}</small>{headerAction}</div>
       </div>
       <div className="editor-container">{children}</div>
+    </div>
+  )
+}
+
+function CurlFormatter({ notify }: { notify: (message: string) => void }) {
+  const [input, setInput] = useState(curlStarter)
+  const [output, setOutput] = useState(() => formatCurlRequest(curlStarter))
+  const [error, setError] = useState('')
+
+  const format = () => {
+    try {
+      setOutput(formatCurlRequest(input))
+      setError('')
+      notify('cURL request formatted')
+    } catch (caught) {
+      setOutput('')
+      setError(caught instanceof Error ? caught.message : 'Unable to parse this cURL command')
+    }
+  }
+
+  const copyOutput = async () => {
+    if (!output) return
+    await navigator.clipboard.writeText(output)
+    notify('Result copied')
+  }
+
+  const clear = () => {
+    setInput('')
+    setOutput('')
+    setError('')
+  }
+
+  return (
+    <div className="tool-layout editor-tool codec-tool">
+      <div className="toolbar">
+        <div className="toolbar-group">
+          <button className="primary-button" onClick={format}><Terminal size={15} />Format request</button>
+        </div>
+        <div className="toolbar-group">
+          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy result</button>
+          <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
+        </div>
+      </div>
+      <div className="split-editors codec-panels">
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>cURL command</span><small>REQUEST</small></div>
+          <textarea
+            value={input}
+            onChange={(event) => {
+              setInput(event.target.value)
+              setError('')
+            }}
+            placeholder="Paste a cURL command…"
+            spellCheck={false}
+            autoFocus
+          />
+        </div>
+        <div className="editor-panel">
+          <div className="editor-panel-header"><span>Request summary</span><small>PLAIN TEXT</small></div>
+          <textarea value={output} readOnly placeholder="The formatted request summary will appear here…" spellCheck={false} />
+        </div>
+      </div>
+      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      <p className="tool-hint">The request URL, method, and payload are extracted from the cURL command. Headers, cookies, and other options are excluded.</p>
     </div>
   )
 }
