@@ -313,6 +313,7 @@ function App() {
                 key={tool.id}
                 onClick={() => switchTool(tool.id)}
                 title={tool.label}
+                aria-current={activeTool === tool.id ? 'page' : undefined}
               >
                 <Icon size={18} />
                 <span>{tool.label}</span>
@@ -353,7 +354,7 @@ function App() {
         </section>
       </main>
 
-      {toast && <div className="toast"><Check size={16} />{toast}</div>}
+      {toast && <div className="toast" role="status" aria-live="polite" aria-atomic="true"><Check size={16} />{toast}</div>}
     </div>
   )
 }
@@ -477,9 +478,9 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
         </div>
         <div className="toolbar-group">
           {parsed !== undefined && (
-            <div className="view-switcher" aria-label="Result view">
-              <button className={viewMode === 'tree' ? 'active' : ''} onClick={() => setViewMode('tree')}>Tree</button>
-              <button className={viewMode === 'text' ? 'active' : ''} onClick={() => setViewMode('text')}>Source</button>
+            <div className="view-switcher" role="group" aria-label="Result view">
+              <button className={viewMode === 'tree' ? 'active' : ''} onClick={() => setViewMode('tree')} aria-pressed={viewMode === 'tree'}>Tree</button>
+              <button className={viewMode === 'text' ? 'active' : ''} onClick={() => setViewMode('text')} aria-pressed={viewMode === 'text'}>Source</button>
             </div>
           )}
           <button className="ghost-button" onClick={copy} disabled={!result}><Copy size={15} />Copy result</button>
@@ -530,7 +531,7 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
           </div>
         </div>
       </div>
-      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      {error && <div className="error-banner" role="alert"><span>!</span>{error}</div>}
     </div>
   )
 }
@@ -1079,7 +1080,7 @@ function DiffChallenge({ theme }: { theme: Theme }) {
 
   return (
     <div className={`tool-layout editor-tool challenge-tool ${status === 'complete' ? 'is-complete' : ''}`}>
-      <div className="challenge-levels" aria-label="Challenge levels">
+      <div className="challenge-levels" role="group" aria-label="Challenge levels">
         {challengeLevels.map((item, index) => (
           <button
             key={item.name}
@@ -1253,6 +1254,7 @@ function CurlFormatter({ notify }: { notify: (message: string) => void }) {
             value={input}
             onChange={(event) => {
               setInput(event.target.value)
+              setOutput('')
               setError('')
             }}
             placeholder="Paste a cURL command…"
@@ -1265,7 +1267,7 @@ function CurlFormatter({ notify }: { notify: (message: string) => void }) {
           <textarea value={output} readOnly placeholder="The formatted request summary will appear here…" spellCheck={false} />
         </div>
       </div>
-      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      {error && <div className="error-banner" role="alert"><span>!</span>{error}</div>}
       <p className="tool-hint">The request URL, method, and payload are extracted from the cURL command. Headers, cookies, and other options are excluded.</p>
     </div>
   )
@@ -1308,15 +1310,22 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
     setError('')
   }
 
+  const changeMode = (nextMode: 'component' | 'url') => {
+    if (nextMode === mode) return
+    setMode(nextMode)
+    setOutput('')
+    setError('')
+  }
+
   return (
     <div className="tool-layout editor-tool codec-tool">
       <div className="toolbar">
         <div className="toolbar-group">
           <button className="primary-button" onClick={() => transformUrl('encode')}>Encode</button>
           <button className="secondary-button" onClick={() => transformUrl('decode')}>Decode</button>
-          <div className="view-switcher" aria-label="Encoding scope">
-            <button className={mode === 'component' ? 'active' : ''} onClick={() => setMode('component')}>Component</button>
-            <button className={mode === 'url' ? 'active' : ''} onClick={() => setMode('url')}>Full URL</button>
+          <div className="view-switcher" role="group" aria-label="Encoding scope">
+            <button className={mode === 'component' ? 'active' : ''} onClick={() => changeMode('component')} aria-pressed={mode === 'component'}>Component</button>
+            <button className={mode === 'url' ? 'active' : ''} onClick={() => changeMode('url')} aria-pressed={mode === 'url'}>Full URL</button>
           </div>
         </div>
         <div className="toolbar-group">
@@ -1327,14 +1336,23 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
       <div className="split-editors codec-panels">
         <div className="editor-panel">
           <div className="editor-panel-header"><span>Input</span><small>RAW</small></div>
-          <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Enter a URL, query parameter, or text…" autoFocus />
+          <textarea
+            value={input}
+            onChange={(event) => {
+              setInput(event.target.value)
+              setOutput('')
+              setError('')
+            }}
+            placeholder="Enter a URL, query parameter, or text…"
+            autoFocus
+          />
         </div>
         <div className="editor-panel">
           <div className="editor-panel-header"><span>Result</span><small>OUTPUT</small></div>
           <textarea value={output} readOnly placeholder="The encoded or decoded result will appear here…" />
         </div>
       </div>
-      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      {error && <div className="error-banner" role="alert"><span>!</span>{error}</div>}
       <p className="tool-hint">Component mode encodes reserved URL characters. Full URL mode preserves URL structure such as : / ? &amp; = and #.</p>
     </div>
   )
@@ -1401,15 +1419,22 @@ function Base64Codec({ notify }: { notify: (message: string) => void }) {
     setError('')
   }
 
+  const changeMode = (nextMode: 'standard' | 'url') => {
+    if (nextMode === mode) return
+    setMode(nextMode)
+    setOutput('')
+    setError('')
+  }
+
   return (
     <div className="tool-layout editor-tool codec-tool">
       <div className="toolbar">
         <div className="toolbar-group">
           <button className="primary-button" onClick={() => transformBase64('encode')}>Encode</button>
           <button className="secondary-button" onClick={() => transformBase64('decode')}>Decode</button>
-          <div className="view-switcher" aria-label="Base64 variant">
-            <button className={mode === 'standard' ? 'active' : ''} onClick={() => setMode('standard')}>Standard</button>
-            <button className={mode === 'url' ? 'active' : ''} onClick={() => setMode('url')}>Base64URL</button>
+          <div className="view-switcher" role="group" aria-label="Base64 variant">
+            <button className={mode === 'standard' ? 'active' : ''} onClick={() => changeMode('standard')} aria-pressed={mode === 'standard'}>Standard</button>
+            <button className={mode === 'url' ? 'active' : ''} onClick={() => changeMode('url')} aria-pressed={mode === 'url'}>Base64URL</button>
           </div>
         </div>
         <div className="toolbar-group">
@@ -1420,14 +1445,23 @@ function Base64Codec({ notify }: { notify: (message: string) => void }) {
       <div className="split-editors codec-panels">
         <div className="editor-panel">
           <div className="editor-panel-header"><span>Input</span><small>UTF-8 / BASE64</small></div>
-          <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Enter UTF-8 text to encode or Base64 to decode…" autoFocus />
+          <textarea
+            value={input}
+            onChange={(event) => {
+              setInput(event.target.value)
+              setOutput('')
+              setError('')
+            }}
+            placeholder="Enter UTF-8 text to encode or Base64 to decode…"
+            autoFocus
+          />
         </div>
         <div className="editor-panel">
           <div className="editor-panel-header"><span>Result</span><small>OUTPUT</small></div>
           <textarea value={output} readOnly placeholder="The encoded or decoded result will appear here…" />
         </div>
       </div>
-      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      {error && <div className="error-banner" role="alert"><span>!</span>{error}</div>}
       <p className="tool-hint">Standard Base64 uses +, / and padding. Base64URL uses URL-safe - and _ characters without padding.</p>
     </div>
   )
@@ -1480,16 +1514,16 @@ function HashGenerator({ notify }: { notify: (message: string) => void }) {
       <div className="toolbar">
         <div className="toolbar-group">
           <button className="primary-button" onClick={generate}><Fingerprint size={15} />Generate</button>
-          <div className="view-switcher" aria-label="Hash algorithm">
+          <div className="view-switcher" role="group" aria-label="Hash algorithm">
             {(['SHA-256', 'SHA-384', 'SHA-512'] as HashAlgorithm[]).map((item) => (
-              <button key={item} className={algorithm === item ? 'active' : ''} onClick={() => { setAlgorithm(item); setHashes(null) }}>{item}</button>
+              <button key={item} className={algorithm === item ? 'active' : ''} onClick={() => { setAlgorithm(item); setHashes(null) }} aria-pressed={algorithm === item}>{item}</button>
             ))}
           </div>
         </div>
         <div className="toolbar-group">
-          <div className="view-switcher" aria-label="Hash output encoding">
-            <button className={encoding === 'hex' ? 'active' : ''} onClick={() => setEncoding('hex')}>Hex</button>
-            <button className={encoding === 'base64' ? 'active' : ''} onClick={() => setEncoding('base64')}>Base64</button>
+          <div className="view-switcher" role="group" aria-label="Hash output encoding">
+            <button className={encoding === 'hex' ? 'active' : ''} onClick={() => setEncoding('hex')} aria-pressed={encoding === 'hex'}>Hex</button>
+            <button className={encoding === 'base64' ? 'active' : ''} onClick={() => setEncoding('base64')} aria-pressed={encoding === 'base64'}>Base64</button>
           </div>
           <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy hash</button>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
@@ -1514,7 +1548,7 @@ function HashGenerator({ notify }: { notify: (message: string) => void }) {
           <textarea value={output} readOnly placeholder="The generated hash will appear here…" />
         </div>
       </div>
-      {error && <div className="error-banner"><span>!</span>{error}</div>}
+      {error && <div className="error-banner" role="alert"><span>!</span>{error}</div>}
       <p className="tool-hint">Hashing is one-way. TextBench processes the entire input locally using the browser's Web Crypto API.</p>
     </div>
   )
@@ -1563,9 +1597,9 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
   return (
     <div className="cards-tool">
       <div className="timestamp-topline">
-        <div className="segmented" aria-label="Timestamp unit">
-          <button className={unit === 's' ? 'active' : ''} onClick={() => changeUnit('s')}>Seconds (s)</button>
-          <button className={unit === 'ms' ? 'active' : ''} onClick={() => changeUnit('ms')}>Milliseconds (ms)</button>
+        <div className="segmented" role="group" aria-label="Timestamp unit">
+          <button className={unit === 's' ? 'active' : ''} onClick={() => changeUnit('s')} aria-pressed={unit === 's'}>Seconds (s)</button>
+          <button className={unit === 'ms' ? 'active' : ''} onClick={() => changeUnit('ms')} aria-pressed={unit === 'ms'}>Milliseconds (ms)</button>
         </div>
         <button className="secondary-button" onClick={resetNow}><Clock3 size={15} />Use current time</button>
       </div>
@@ -1694,7 +1728,7 @@ function RegexTester() {
           <input value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Enter a regular expression" aria-label="Regular expression" spellCheck={false} />
           <span>/</span>
         </label>
-        <div className="regex-flags" aria-label="Regular expression flags">
+        <div className="regex-flags" role="group" aria-label="Regular expression flags">
           {['g', 'i', 'm', 's', 'u'].map((flag) => (
             <button key={flag} className={flags.includes(flag) ? 'active' : ''} onClick={() => toggleFlag(flag)} aria-pressed={flags.includes(flag)} title={`Toggle ${flag} flag`}>{flag}</button>
           ))}
@@ -1711,7 +1745,7 @@ function RegexTester() {
         <section className="editor-panel regex-result-panel">
           <div className="editor-panel-header"><span>Match results</span><small>{result.error ? 'INVALID' : `${result.matches.length} MATCH${result.matches.length === 1 ? '' : 'ES'}`}</small></div>
           {result.error ? (
-            <div className="regex-error"><span>!</span>{result.error}</div>
+            <div className="regex-error" role="alert"><span>!</span>{result.error}</div>
           ) : (
             <>
               <RegexHighlightedText text={text} matches={result.matches} />
