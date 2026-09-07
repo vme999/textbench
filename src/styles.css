@@ -56,7 +56,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   outline-offset: 2px;
 }
 
-.app-shell { min-height: 100vh; display: grid; grid-template-columns: 64px minmax(0, 1fr); }
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 64px minmax(0, 1fr); transition: grid-template-columns .18s ease; }
+.app-shell.sidebar-expanded { grid-template-columns: 238px minmax(0, 1fr); }
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -88,7 +89,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .sidebar-collapsed .brand { min-width: 48px; justify-content: center; padding-right: 0; padding-left: 0; }
 .sidebar-collapsed .brand > div:last-child, .sidebar-collapsed .nav-label, .sidebar-collapsed .nav-item span { display: none; }
 .nav-label { padding: 0 12px 9px; color: var(--text-subtle); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.tool-nav { min-width: 206px; display: flex; flex-direction: column; gap: 4px; }
+.tool-nav { min-width: 206px; min-height: 0; display: flex; flex: 1; flex-direction: column; gap: 4px; overflow-y: auto; }
 .nav-item {
   width: 100%;
   display: flex;
@@ -108,6 +109,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .sidebar-collapsed .nav-item { width: 48px; justify-content: center; padding: 10px 0; }
 .nav-item:hover { color: var(--text); background: var(--surface-hover); }
 .nav-item.active { color: var(--accent-strong); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
+.sidebar-toggle {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  align-self: flex-end;
+  margin-top: 14px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: var(--surface);
+  cursor: pointer;
+  transition: .16s ease;
+}
+.sidebar-toggle:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-hover); }
 .main-area { grid-column: 2; min-width: 0; height: 100vh; display: flex; flex-direction: column; }
 .topbar {
   min-height: 82px;
@@ -408,7 +426,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 
 @media (max-width: 800px) {
-  .app-shell { display: block; }
+  .app-shell, .app-shell.sidebar-expanded { display: block; }
   .sidebar, .app-shell.sidebar-expanded .sidebar { position: static; width: auto; height: auto; padding: 14px 16px 0; border-right: 0; border-bottom: 1px solid var(--border); }
   .brand { padding: 0 2px 13px; }
   .brand-tagline, .nav-label { display: none; }
@@ -418,6 +436,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   .sidebar-collapsed .brand > div:last-child { display: block; }
   .sidebar-collapsed .nav-item { width: auto; justify-content: flex-start; padding: 8px 10px; }
   .sidebar-collapsed .nav-item span { display: inline; }
+  .sidebar-toggle { display: none; }
   .main-area { height: calc(100vh - 110px); }
   .topbar { min-height: 70px; padding: 11px 16px; }
   .workspace { padding: 13px; }

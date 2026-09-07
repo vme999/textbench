@@ -24,6 +24,8 @@ import {
   LockKeyhole,
   Minimize2,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   Regex,
   RotateCcw,
@@ -265,7 +267,7 @@ function App() {
   const [activeTool, setActiveTool] = useState<ToolId>(currentToolFromHash)
   const [theme, setTheme] = useState<Theme>('light')
   const [toast, setToast] = useState('')
-  const [sidebarHovered, setSidebarHovered] = useState(false)
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
 
   useEffect(() => {
     const onHashChange = () => setActiveTool(currentToolFromHash())
@@ -286,15 +288,14 @@ function App() {
   const switchTool = (tool: ToolId) => {
     window.location.hash = tool
     setActiveTool(tool)
-    setSidebarHovered(false)
   }
 
   const notify = (message: string) => setToast(message)
   const activeMeta = tools.find((tool) => tool.id === activeTool)!
 
   return (
-    <div className={`app-shell ${sidebarHovered ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
-      <aside className="sidebar" onMouseEnter={() => setSidebarHovered(true)} onMouseLeave={() => setSidebarHovered(false)}>
+    <div className={`app-shell ${sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
+      <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark"><ChevronRight size={21} strokeWidth={2.8} /></div>
           <div>
@@ -321,6 +322,17 @@ function App() {
             )
           })}
         </nav>
+
+        <button
+          className="sidebar-toggle"
+          type="button"
+          onClick={() => setSidebarExpanded((expanded) => !expanded)}
+          aria-label={sidebarExpanded ? 'Show icons only' : 'Show full menu'}
+          aria-expanded={sidebarExpanded}
+          title={sidebarExpanded ? 'Show icons only' : 'Show full menu'}
+        >
+          {sidebarExpanded ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+        </button>
       </aside>
 
       <main className="main-area">
