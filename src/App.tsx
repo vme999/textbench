@@ -458,15 +458,29 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
 
   const unescapeJson = () => {
     if (!source) {
-      setError('Paste text into the left editor first')
+      setError('Paste escaped JSON into the left editor first')
       return
     }
-    const serialized = JSON.stringify(source).slice(1, -1)
-    setResult(serialized)
-    setParsed(undefined)
-    setViewMode('text')
-    setError('')
-    notify('JSON stringified')
+    try {
+      const trimmed = source.trim()
+      const decoded = trimmed.startsWith('"') && trimmed.endsWith('"')
+        ? JSON.parse(trimmed)
+        : JSON.parse(`"${trimmed}"`)
+      if (typeof decoded !== 'string') throw new Error('The input is not an escaped JSON string')
+      setResult(decoded)
+      try {
+        setParsed(JSON.parse(decoded) as JsonValue)
+      } catch {
+        setParsed(undefined)
+      }
+      setViewMode('text')
+      setError('')
+      notify('JSON unescaped')
+    } catch (caught) {
+      setResult('')
+      setParsed(undefined)
+      setError(caught instanceof Error ? caught.message : 'Unable to unescape JSON')
+    }
   }
 
   const searchResult = () => {
