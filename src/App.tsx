@@ -264,27 +264,17 @@ function openEditorSearch(editor: MonacoEditor | null) {
 }
 
 function CopyButton({ value, children, ariaLabel }: { value: string; children: ReactNode; ariaLabel?: string }) {
-  const [copied, setCopied] = useState(false)
-  const resetTimer = useRef<number | undefined>(undefined)
-
-  useEffect(() => () => {
-    if (resetTimer.current !== undefined) window.clearTimeout(resetTimer.current)
-  }, [])
-
   const copy = async () => {
     if (!value) return
     try {
       await navigator.clipboard.writeText(value)
-      setCopied(true)
-      if (resetTimer.current !== undefined) window.clearTimeout(resetTimer.current)
-      resetTimer.current = window.setTimeout(() => setCopied(false), 1500)
     } catch {
-      setCopied(false)
+      // Clipboard access can be unavailable outside a secure browser context.
     }
   }
 
   return (
-    <button className={`ghost-button copy-button${copied ? ' copied' : ''}`} onClick={copy} disabled={!value} aria-label={ariaLabel}>
+    <button className="ghost-button copy-button" onClick={copy} disabled={!value} aria-label={ariaLabel}>
       {children}
     </button>
   )
@@ -293,8 +283,9 @@ function CopyButton({ value, children, ariaLabel }: { value: string; children: R
 function App() {
   const [activeTool, setActiveTool] = useState<ToolId>(currentToolFromHash)
   const [theme, setTheme] = useState<Theme>('light')
-  const [toast, setToast] = useState('')
+  const [actionFeedback, setActionFeedback] = useState(false)
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const feedbackTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     const onHashChange = () => setActiveTool(currentToolFromHash())
@@ -306,18 +297,21 @@ function App() {
     document.documentElement.dataset.theme = theme
   }, [theme])
 
-  useEffect(() => {
-    if (!toast) return
-    const timer = window.setTimeout(() => setToast(''), 1800)
-    return () => window.clearTimeout(timer)
-  }, [toast])
+  useEffect(() => () => {
+    if (feedbackTimer.current !== undefined) window.clearTimeout(feedbackTimer.current)
+  }, [])
 
   const switchTool = (tool: ToolId) => {
     window.location.hash = tool
     setActiveTool(tool)
   }
 
-  const notify = (message: string) => setToast(message)
+  const notify = () => {
+    setActionFeedback(false)
+    window.requestAnimationFrame(() => setActionFeedback(true))
+    if (feedbackTimer.current !== undefined) window.clearTimeout(feedbackTimer.current)
+    feedbackTimer.current = window.setTimeout(() => setActionFeedback(false), 650)
+  }
   const activeMeta = tools.find((tool) => tool.id === activeTool)!
 
   return (
@@ -378,7 +372,7 @@ function App() {
           </button>
         </header>
 
-        <section className="workspace">
+        <section className={`workspace${actionFeedback ? ' action-feedback' : ''}`}>
           <div className="tool-page" hidden={activeTool !== 'json-format'}><JsonFormatter theme={theme} notify={notify} /></div>
           <div className="tool-page" hidden={activeTool !== 'text-diff'}><TextDiff theme={theme} notify={notify} /></div>
           <div className="tool-page" hidden={activeTool !== 'markdown-editor'}><MarkdownEditor theme={theme} notify={notify} /></div>
@@ -393,7 +387,6 @@ function App() {
         </section>
       </main>
 
-      {toast && <div className="toast" role="status" aria-live="polite" aria-atomic="true"><Check size={16} />{toast}</div>}
     </div>
   )
 }
