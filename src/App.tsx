@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Editor, { DiffEditor, type DiffOnMount, type OnMount } from '@monaco-editor/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -263,6 +263,33 @@ function openEditorSearch(editor: MonacoEditor | null) {
   void editor.getAction('actions.find')?.run()
 }
 
+function CopyButton({ value, children, ariaLabel }: { value: string; children: ReactNode; ariaLabel?: string }) {
+  const [copied, setCopied] = useState(false)
+  const resetTimer = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => {
+    if (resetTimer.current !== undefined) window.clearTimeout(resetTimer.current)
+  }, [])
+
+  const copy = async () => {
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      if (resetTimer.current !== undefined) window.clearTimeout(resetTimer.current)
+      resetTimer.current = window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <button className={`ghost-button copy-button${copied ? ' copied' : ''}`} onClick={copy} disabled={!value} aria-label={ariaLabel}>
+      {children}
+    </button>
+  )
+}
+
 function App() {
   const [activeTool, setActiveTool] = useState<ToolId>(currentToolFromHash)
   const [theme, setTheme] = useState<Theme>('light')
@@ -352,17 +379,17 @@ function App() {
         </header>
 
         <section className="workspace">
-          {activeTool === 'json-format' && <JsonFormatter theme={theme} notify={notify} />}
-          {activeTool === 'text-diff' && <TextDiff theme={theme} notify={notify} />}
-          {activeTool === 'markdown-editor' && <MarkdownEditor theme={theme} notify={notify} />}
-          {activeTool === 'url-codec' && <UrlCodec notify={notify} />}
-          {activeTool === 'timestamp' && <TimestampConverter notify={notify} />}
-          {activeTool === 'word-count' && <WordCounter />}
-          {activeTool === 'regex-tester' && <RegexTester />}
-          {activeTool === 'curl-formatter' && <CurlFormatter notify={notify} />}
-          {activeTool === 'base64-codec' && <Base64Codec notify={notify} />}
-          {activeTool === 'hash-generator' && <HashGenerator notify={notify} />}
-          {activeTool === 'diff-challenge' && <DiffChallenge theme={theme} />}
+          <div className="tool-page" hidden={activeTool !== 'json-format'}><JsonFormatter theme={theme} notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'text-diff'}><TextDiff theme={theme} notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'markdown-editor'}><MarkdownEditor theme={theme} notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'url-codec'}><UrlCodec notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'timestamp'}><TimestampConverter notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'word-count'}><WordCounter /></div>
+          <div className="tool-page" hidden={activeTool !== 'regex-tester'}><RegexTester /></div>
+          <div className="tool-page" hidden={activeTool !== 'curl-formatter'}><CurlFormatter notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'base64-codec'}><Base64Codec notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'hash-generator'}><HashGenerator notify={notify} /></div>
+          <div className="tool-page" hidden={activeTool !== 'diff-challenge'}><DiffChallenge theme={theme} /></div>
         </section>
       </main>
 
@@ -405,12 +432,6 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
     }
   }
 
-  const copy = async () => {
-    if (!result) return
-    await navigator.clipboard.writeText(result)
-    notify('Result copied')
-  }
-
   const clear = () => {
     setSource('')
     setResult('')
@@ -437,29 +458,15 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
 
   const unescapeJson = () => {
     if (!source) {
-      setError('Paste escaped JSON into the left editor first')
+      setError('Paste text into the left editor first')
       return
     }
-    try {
-      const trimmed = source.trim()
-      const decoded = trimmed.startsWith('"') && trimmed.endsWith('"')
-        ? JSON.parse(trimmed)
-        : JSON.parse(`"${trimmed}"`)
-      if (typeof decoded !== 'string') throw new Error('The input is not an escaped JSON string')
-      setResult(decoded)
-      try {
-        setParsed(JSON.parse(decoded) as JsonValue)
-      } catch {
-        setParsed(undefined)
-      }
-      setViewMode('text')
-      setError('')
-      notify('JSON unescaped')
-    } catch (caught) {
-      setResult('')
-      setParsed(undefined)
-      setError(caught instanceof Error ? caught.message : 'Unable to unescape JSON')
-    }
+    const serialized = JSON.stringify(source).slice(1, -1)
+    setResult(serialized)
+    setParsed(undefined)
+    setViewMode('text')
+    setError('')
+    notify('JSON stringified')
   }
 
   const searchResult = () => {
@@ -495,7 +502,7 @@ function JsonFormatter({ theme, notify }: { theme: Theme; notify: (message: stri
               <button className={viewMode === 'text' ? 'active' : ''} onClick={() => setViewMode('text')} aria-pressed={viewMode === 'text'}>Source</button>
             </div>
           )}
-          <button className="ghost-button" onClick={copy} disabled={!result}><Copy size={15} />Copy result</button>
+          <CopyButton value={result}><Copy size={15} />Copy result</CopyButton>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
@@ -695,12 +702,6 @@ function MarkdownEditor({ theme, notify }: { theme: Theme; notify: (message: str
   const [source, setSource] = useState(markdownStarter)
   const sourceEditorRef = useRef<MonacoEditor | null>(null)
 
-  const copy = async () => {
-    if (!source) return
-    await navigator.clipboard.writeText(source)
-    notify('Markdown copied')
-  }
-
   const clear = () => {
     setSource('')
     notify('Markdown cleared')
@@ -711,7 +712,7 @@ function MarkdownEditor({ theme, notify }: { theme: Theme; notify: (message: str
       <div className="toolbar">
         <div className="markdown-status">Live preview updates as you type</div>
         <div className="toolbar-group">
-          <button className="ghost-button" onClick={copy} disabled={!source}><Copy size={15} />Copy Markdown</button>
+          <CopyButton value={source}><Copy size={15} />Copy Markdown</CopyButton>
           <button className="ghost-button" onClick={clear} disabled={!source}><Eraser size={15} />Clear</button>
         </div>
       </div>
@@ -1236,12 +1237,6 @@ function CurlFormatter({ notify }: { notify: (message: string) => void }) {
     }
   }
 
-  const copyOutput = async () => {
-    if (!output) return
-    await navigator.clipboard.writeText(output)
-    notify('Result copied')
-  }
-
   const clear = () => {
     setInput('')
     setOutput('')
@@ -1255,7 +1250,7 @@ function CurlFormatter({ notify }: { notify: (message: string) => void }) {
           <button className="primary-button" onClick={format}><Terminal size={15} />Format request</button>
         </div>
         <div className="toolbar-group">
-          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy result</button>
+          <CopyButton value={output}><Copy size={15} />Copy result</CopyButton>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
@@ -1310,12 +1305,6 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
     }
   }
 
-  const copyOutput = async () => {
-    if (!output) return
-    await navigator.clipboard.writeText(output)
-    notify('Result copied')
-  }
-
   const clear = () => {
     setInput('')
     setOutput('')
@@ -1341,7 +1330,7 @@ function UrlCodec({ notify }: { notify: (message: string) => void }) {
           </div>
         </div>
         <div className="toolbar-group">
-          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy result</button>
+          <CopyButton value={output}><Copy size={15} />Copy result</CopyButton>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
@@ -1419,12 +1408,6 @@ function Base64Codec({ notify }: { notify: (message: string) => void }) {
     }
   }
 
-  const copyOutput = async () => {
-    if (!output) return
-    await navigator.clipboard.writeText(output)
-    notify('Result copied')
-  }
-
   const clear = () => {
     setInput('')
     setOutput('')
@@ -1450,7 +1433,7 @@ function Base64Codec({ notify }: { notify: (message: string) => void }) {
           </div>
         </div>
         <div className="toolbar-group">
-          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy result</button>
+          <CopyButton value={output}><Copy size={15} />Copy result</CopyButton>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
@@ -1509,12 +1492,6 @@ function HashGenerator({ notify }: { notify: (message: string) => void }) {
     }
   }
 
-  const copyOutput = async () => {
-    if (!output) return
-    await navigator.clipboard.writeText(output)
-    notify('Hash copied')
-  }
-
   const clear = () => {
     setInput('')
     setHashes(null)
@@ -1537,7 +1514,7 @@ function HashGenerator({ notify }: { notify: (message: string) => void }) {
             <button className={encoding === 'hex' ? 'active' : ''} onClick={() => setEncoding('hex')} aria-pressed={encoding === 'hex'}>Hex</button>
             <button className={encoding === 'base64' ? 'active' : ''} onClick={() => setEncoding('base64')} aria-pressed={encoding === 'base64'}>Base64</button>
           </div>
-          <button className="ghost-button" onClick={copyOutput} disabled={!output}><Copy size={15} />Copy hash</button>
+          <CopyButton value={output}><Copy size={15} />Copy hash</CopyButton>
           <button className="ghost-button" onClick={clear}><Eraser size={15} />Clear</button>
         </div>
       </div>
@@ -1584,12 +1561,6 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
     return String(unit === 's' ? Math.floor(date.getTime() / 1000) : date.getTime())
   }, [dateInput, unit])
 
-  const copyValue = async (value: string) => {
-    if (!value) return
-    await navigator.clipboard.writeText(value)
-    notify('Copied')
-  }
-
   const resetNow = () => {
     const current = new Date()
     setTimestamp(String(unit === 's' ? Math.floor(current.getTime() / 1000) : current.getTime()))
@@ -1627,7 +1598,7 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
           <div className="result-box">
             <span>Local time</span>
             <strong>{timestampDate ? formatLocalDate(timestampDate) : 'Enter a valid timestamp'}</strong>
-            <button onClick={() => copyValue(timestampDate ? formatLocalDate(timestampDate) : '')} aria-label="Copy date"><Clipboard size={16} /></button>
+            <CopyButton value={timestampDate ? formatLocalDate(timestampDate) : ''} ariaLabel="Copy date"><Clipboard size={16} /></CopyButton>
           </div>
         </article>
 
@@ -1645,7 +1616,7 @@ function TimestampConverter({ notify }: { notify: (message: string) => void }) {
           <div className="result-box">
             <span>{unit === 's' ? 'Timestamp in seconds' : 'Timestamp in milliseconds'}</span>
             <strong className="mono">{dateTimestamp || '—'}</strong>
-            <button onClick={() => copyValue(dateTimestamp)} aria-label="Copy timestamp"><Clipboard size={16} /></button>
+            <CopyButton value={dateTimestamp} ariaLabel="Copy timestamp"><Clipboard size={16} /></CopyButton>
           </div>
         </article>
       </div>

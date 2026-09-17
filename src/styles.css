@@ -151,6 +151,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 .icon-button:hover { color: var(--text); border-color: var(--border-strong); }
 .workspace { min-height: 0; flex: 1; padding: 20px 24px 24px; overflow: auto; }
+.tool-page { height: 100%; }
 .tool-layout { height: 100%; min-height: 520px; }
 .editor-tool { display: flex; flex-direction: column; }
 .toolbar { min-height: 41px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -182,6 +183,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .secondary-button:hover { background: var(--surface-hover); }
 .ghost-button { color: var(--text-muted); background: transparent; border: 1px solid transparent; }
 .ghost-button:hover:not(:disabled) { color: var(--text); background: var(--surface-hover); }
+.copy-button.copied { color: var(--accent-strong); border-color: color-mix(in srgb, var(--accent) 46%, var(--border)); background: var(--accent-soft); transform: translateY(-1px); }
 .ghost-button:disabled, button:disabled { opacity: .38; cursor: default; }
 
 .split-editors { min-height: 0; flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
